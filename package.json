@@ -1,9 +1,11 @@
 {
+  "type": "module",
   "name": "transfert_safetyeasy_susareuv2",
   "version": "1.0.0",
   "description": "Copie des essais cliniques depuis la BDD Safety Easy vers Susar_EU_v2",
-  "main": "index.js",
+  "main": "main_2.js",
   "scripts": {
+    "start": "node ./src/main_2.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Frédéric RANNOU",
