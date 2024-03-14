@@ -1,3 +1,5 @@
 .env
 node_modules/
 logs/log_file.txt
+JSON_Save/
+nodemon.json
