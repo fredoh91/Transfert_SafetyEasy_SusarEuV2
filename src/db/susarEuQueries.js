@@ -1,30 +1,26 @@
-const { connection } = require('./db');
 
-async function insertSusarData(data) {
-    try {
-        await connection.execute('INSERT INTO susar (column1, column2, ...) VALUES (?, ?, ...)', [data.column1, data.column2, ...]);
-    } catch (error) {
-        console.error('Error inserting data into susar table:', error);
-        throw error;
-    }
-}
+// ------------------------------------------------------------------------------------
+// --  donne_objSubLowLevel : récupération de la table de correspondance high level / low level    --
+// ------------------------------------------------------------------------------------
 
-async function insertProductData(data) {
-    try {
-        await connection.execute('INSERT INTO produit (column1, column2, ...) VALUES (?, ?, ...)', [data.column1, data.column2, ...]);
-    } catch (error) {
-        console.error('Error inserting data into produit table:', error);
-        throw error;
-    }
-}
+/**
+ * 
+ * @param {*} connectionSusarEu 
+ * @returns : un objet avec le resultat de la requete
+ */
+const donne_objSubLowLevel = async (connectionSusarEu) => {
+    const results = await connectionSusarEu.query(
+      'SELECT * FROM active_substance_grouping WHERE active_substance_grouping.inactif = 0 ;'
+    );
+    // console.log(results[0][0])
+    // console.log(results[0])
+    // const lstSubLowLevel = results[0].map(obj => obj.active_substance_high_le_low_level);
 
-async function insertPtData(data) {
-    try {
-        await connection.execute('INSERT INTO pt (column1, column2, ...) VALUES (?, ?, ...)', [data.column1, data.column2, ...]);
-    } catch (error) {
-        console.error('Error inserting data into pt table:', error);
-        throw error;
-    }
-}
+    return results[0];
+  }
 
-module.exports = { insertSusarData, insertProductData, insertPtData };
+
+  
+export { 
+    donne_objSubLowLevel
+};
