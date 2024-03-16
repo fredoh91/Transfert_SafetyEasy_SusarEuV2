@@ -44,7 +44,56 @@ async function  donne_objSubLowLevel (connectionSusarEu) {
     }
   }
   
+
+
+// ------------------------------------------------------------------------------------
+// --  effaceTablesSUSAR_EU : Efface les tables SUSAR_EU avant import pour DEV    --
+// ------------------------------------------------------------------------------------
+
+async function isSUSAR_EU_unique (connectionSusarEu,master_id,specificcaseid,DLPVersion) {
+  const SQL_master_id_unique = `SELECT 
+                                  COUNT(susar_eu.id) AS nb
+                                FROM
+                                  susar_eu
+                                WHERE
+                                  susar_eu.master_id = ${master_id};`
+  const SQL_specificcaseid_DLPVersion_unique = `SELECT
+                                                  COUNT(susar_eu.id) AS nb
+                                                FROM
+                                                  susar_eu
+                                                WHERE
+                                                  susar_eu.specificcaseid = '${specificcaseid}'
+                                                  AND susar_eu.dlpversion = 	${DLPVersion}
+                                                  ;`
+
+  try {
+    const res_1 = connectionSusarEu.query(SQL_master_id_unique);
+    const res_2 = connectionSusarEu.query(SQL_specificcaseid_DLPVersion_unique);
+
+    const [resu_1, resu_2] = await Promise.all([res_1, res_2]);
+    
+    // console.log([resu_1[0][0]['nb'], resu_2[0][0]['nb']])
+    if(resu_1[0][0]['nb'] === 0 && resu_2[0][0]['nb'] === 0 ) { 
+      return true
+    } else {
+      return false
+    }
+
+
+  } catch (err) {
+    console.error(erreur);
+  } finally {
+    // await closePoolSusarEu(poolSusarEu)
+  }
+
+
+
+}
+  
+
+
 export { 
     donne_objSubLowLevel,
-    effaceTablesSUSAR_EU
+    effaceTablesSUSAR_EU,
+    isSUSAR_EU_unique
 };

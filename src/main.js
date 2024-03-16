@@ -15,7 +15,8 @@
   
   import {
     donne_objSubLowLevel,
-    effaceTablesSUSAR_EU
+    effaceTablesSUSAR_EU,
+    isSUSAR_EU_unique
   } from './db/susarEuQueries.js'
 
 
@@ -88,19 +89,12 @@
 
 
   const insertSUSAR_EU = async (poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV) => {
-    
-    
-    
     async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV) {
       try {
-        
-        
-        
-        // Démarrez une transaction
+
+        // début de la transaction
         await connectionSusarEu.beginTransaction();
-        
-        
-        
+
         /*************************************************************************************** */        
         
         // boucle pour les INSERT dans les différentes tables 
@@ -109,271 +103,285 @@
           i++
           
           console.log(susar['master_id'])
-          // INSERT dans la table susar_eu
-          
-          // const SQL_insert_susar_eu = "INSERT INTO susar_eu (studytitle,sponsorstudynumb,created_at,updated_at) VALUES (?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);"
-          const SQL_insert_susar_eu = "INSERT INTO susar_eu ( " +
-          "master_id," +
-          "caseid," +
-          "specificcaseid," +
-          "dlpversion," +
-          "creationdate," +
-          "statusdate," +
-          "world_wide_id," +
-          "is_case_serious," +
-          "seriousness_criteria_brut," +
-          "patient_sex," +
-          "patient_age," +
-          "patient_age_unit_label," +
-          "patient_age_group," +
-          "pays_survenue," +
-          "narratif, " +
-          "created_at," +
-          "updated_at " +
-          ") VALUES (" +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "? ," +
-          "CURRENT_TIMESTAMP, " +
-          "CURRENT_TIMESTAMP " +
-          ");" 
 
-          
-          const res1 = await connectionSusarEu.query(SQL_insert_susar_eu, [
-            susar['master_id'], 
-            susar['caseid'], 
-            susar['specificcaseid'], 
-            susar['DLPVersion'], 
-            susar['creationdate'], 
-            susar['statusdate'], 
-            susar['worldwideuniquecaseidentificationnumber'], 
-            susar['iscaseserious'], 
-            susar['seriousnesscriteria'], 
-            susar['patientsex'], 
-            susar['patientonsetage'], 
-            susar['patientonsetageunitlabel'], 
-            susar['patientagegroup'], 
-            susar['pays_survenue'], 
-            susar['narrativeincludeclinical']
-          ]);
-          // console.log(res1)
-          // Récupérez l'ID généré lors du premier INSERT
-          const idSUSAR_EU = res1[0].insertId;
-          
-          console.log ("idSUSAR_EU : ",idSUSAR_EU)
-          
-          // pour charger les médicaments
-          const MedicsFiltre = MedicBNPV.filter(Medic => Medic.master_id === susar['master_id']);
-    
-          for (const Medic of MedicsFiltre) {
+          // vérification avec les INSERT d'un SUSAR et des ses enregistrements liés :
+          //      - On regarde que "susar['master_id']" n'existe pas déjà dans la table "susar_eu"
+          //      - On regarde que "susar['specificcaseid'] AND susar['DLPVersion']" n'existe pas déjà dans la table "susar_eu"
+          const isUnique = await isSUSAR_EU_unique (connectionSusarEu,susar['master_id'],susar['specificcaseid'],susar['DLPVersion'])
+
+          if (isUnique) {
+            // INSERT dans la table susar_eu
             
-            // pour charger le high level substance name
-            const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_high_le_low_level === Medic['substancename']);
-            let highLevelSubName = "" 
-            for (const highLevel of objSubHighLevelFiltre) {
-              if (highLevelSubName.length == 0) {
-                highLevelSubName = highLevel['active_substance_high_level']
-              } else {
-                highLevelSubName += "/" + highLevel['active_substance_high_level']
+            // const SQL_insert_susar_eu = "INSERT INTO susar_eu (studytitle,sponsorstudynumb,created_at,updated_at) VALUES (?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);"
+            const SQL_insert_susar_eu = "INSERT INTO susar_eu ( " +
+                                                      "master_id," +
+                                                      "caseid," +
+                                                      "specificcaseid," +
+                                                      "dlpversion," +
+                                                      "creationdate," +
+                                                      "statusdate," +
+                                                      "world_wide_id," +
+                                                      "is_case_serious," +
+                                                      "seriousness_criteria_brut," +
+                                                      "patient_sex," +
+                                                      "patient_age," +
+                                                      "patient_age_unit_label," +
+                                                      "patient_age_group," +
+                                                      "pays_survenue," +
+                                                      "narratif, " +
+                                                      "created_at," +
+                                                      "updated_at " +
+                                            ") VALUES (" +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "? ," +
+                                                      "CURRENT_TIMESTAMP, " +
+                                                      "CURRENT_TIMESTAMP " +
+                                              ");" 
+  
+            
+            const res1 = await connectionSusarEu.query(SQL_insert_susar_eu, [
+              susar['master_id'], 
+              susar['caseid'], 
+              susar['specificcaseid'], 
+              susar['DLPVersion'], 
+              susar['creationdate'], 
+              susar['statusdate'], 
+              susar['worldwideuniquecaseidentificationnumber'], 
+              susar['iscaseserious'], 
+              susar['seriousnesscriteria'], 
+              susar['patientsex'], 
+              susar['patientonsetage'], 
+              susar['patientonsetageunitlabel'], 
+              susar['patientagegroup'], 
+              susar['pays_survenue'], 
+              susar['narrativeincludeclinical']
+            ]);
+            // console.log(res1)
+            // Récupérez l'ID généré lors du premier INSERT
+            const idSUSAR_EU = res1[0].insertId;
+            
+            // console.log ("idSUSAR_EU : ",idSUSAR_EU)
+            
+            // pour charger les médicaments
+            const MedicsFiltre = MedicBNPV.filter(Medic => Medic.master_id === susar['master_id']);
+      
+            for (const Medic of MedicsFiltre) {
+              
+              // pour charger le high level substance name
+              const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_high_le_low_level === Medic['substancename']);
+              let highLevelSubName = "" 
+              for (const highLevel of objSubHighLevelFiltre) {
+                if (highLevelSubName.length == 0) {
+                  highLevelSubName = highLevel['active_substance_high_level']
+                } else {
+                  highLevelSubName += "/" + highLevel['active_substance_high_level']
+                }
               }
+      
+              // // console.log(objSubhighLevelFiltre[0])
+              // console.log(Medic['NBBlock'] + " : " + 
+              //             Medic['NBBlock2'] + " - " +
+              //             Medic['productname'] + " / " + 
+              //             Medic['substancename'] + " (" +
+              //             Medic['productcharacterization'] + ") - " + 
+              //             highLevelSubName
+              //             )
+  
+              // INSERT dans la table medicaments l'ID généré comme clé étrangère
+              const SQL_insert_medicaments = "INSERT INTO medicaments ( " + 
+              "susar_id," +
+              "master_id," +
+              "caseid," +
+              "specificcaseid," +
+              "dlpversion," +
+              "productcharacterization," +
+              "productname," +
+              "substancename," +
+              "active_substance_high_level," +
+              "nbblock," +
+              "nbblock2," +
+              "created_at," +
+              "updated_at " +
+              ") VALUES (" +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "CURRENT_TIMESTAMP, " +
+              "CURRENT_TIMESTAMP " +
+              ");" 
+  
+              const res2 = await connectionSusarEu.query(SQL_insert_medicaments, [
+                idSUSAR_EU,
+                Medic['master_id'], 
+                Medic['caseid'], 
+                Medic['specificcaseid'], 
+                Medic['DLPVersion'], 
+                Medic['productcharacterization'], 
+                Medic['productname'], 
+                Medic['substancename'], 
+                highLevelSubName, 
+                Medic['NBBlock'], 
+                Medic['NBBlock2']
+              ]);
+  
             }
-    
-            // // console.log(objSubhighLevelFiltre[0])
-            // console.log(Medic['NBBlock'] + " : " + 
-            //             Medic['NBBlock2'] + " - " +
-            //             Medic['productname'] + " / " + 
-            //             Medic['substancename'] + " (" +
-            //             Medic['productcharacterization'] + ") - " + 
-            //             highLevelSubName
-            //             )
+      
+      
+            // pour charger les effets indesirables
+      
+            // console.log ("Effets indesirables : ")
+            const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
+            for (const EI of EIFiltre) {
+              // console.log(EI['codereactionmeddrapt'] + " : " + 
+              //             EI['reactionmeddrapt']  + " (" + 
+              //             EI['reactionstartdate'] + ")" 
+              //             )
+  
+              // INSERT dans la table effets_indesirables l'ID généré comme clé étrangère
+                          
+              const SQL_insert_EI = "INSERT INTO effets_indesirables ( " + 
+              "susar_id," +
+              "master_id," +
+              "caseid," +
+              "specificcaseid," +
+              "dlpversion," +
+              "reactionstartdate," +
+              "codereactionmeddrallt," +
+              "reactionmeddrallt," +
+              "codereactionmeddrapt," +
+              "reactionmeddrapt," +
+              "codereactionmeddrahlt," +
+              "reactionmeddrahlt," +
+              "codereactionmeddrahlgt," +
+              "reactionmeddrahlgt," +
+              "reactionmeddrasoc," +
+              "soc," +
+              "created_at," +
+              "updated_at " +
+              ") VALUES (" +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "CURRENT_TIMESTAMP, " +
+              "CURRENT_TIMESTAMP " +
+              ");" 
+  
+              const res3 = await connectionSusarEu.query(SQL_insert_EI, [
+                idSUSAR_EU,
+                EI['master_id'], 
+                EI['caseid'], 
+                EI['specificcaseid'], 
+                EI['DLPVersion'], 
+                EI['reactionstartdate'],
+                EI['codereactionmeddrallt'],
+                EI['reactionmeddrallt'],
+                EI['codereactionmeddrapt'], 
+                EI['reactionmeddrapt'],
+                EI['codereactionmeddrahlt'], 
+                EI['reactionmeddrahlt'],
+                EI['codereactionmeddrahlgt'],
+                EI['reactionmeddrahlgt'],
+                EI['reactionmeddrasoc'], 
+                EI['soc'] 
+              ]);
+            }
+      
+      
+            // pour charger les "medical history"
+            // console.log ("Medical history : ")
+            const MedHistFiltre = MedHistBNPV.filter(MedHist => MedHist.master_id === susar['master_id']);
+            for (const MedHist of MedHistFiltre) {
+              // if (MedHist['patientmedicalcomment']==='') {
+              //   console.log(MedHist['code_PT'] + " : " + 
+              //               MedHist['lib_PT']
+              //               )
+              // } else {
+              //   console.log(MedHist['code_PT'] + " : " + 
+              //               MedHist['lib_PT'] + " (" +
+              //               MedHist['patientmedicalcomment'] + ")"
+              //               )
+              // }
+  
+              // INSERT dans la table effets_indesirables l'ID généré comme clé étrangère
+              const SQL_insert_MedHist = "INSERT INTO medical_history ( " + 
+              "susar_id," +
+              "master_id," +
+              "disease_lib_llt," +
+              "disease_lib_pt," +
+              "disease_code_llt," +
+              "disease_code_pt," +
+              "continuing," +
+              "medicalcomment," +
+              "created_at," +
+              "updated_at " +
+              ") VALUES (" +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "? ," +
+              "CURRENT_TIMESTAMP, " +
+              "CURRENT_TIMESTAMP " +
+              ");" 
+  
+              const res4 = await connectionSusarEu.query(SQL_insert_MedHist, [
+                idSUSAR_EU,
+                MedHist['master_id'], 
+                MedHist['lib_LLT'], 
+                MedHist['lib_PT'], 
+                MedHist['code_LLT'], 
+                MedHist['code_PT'],
+                MedHist['patientmedicalcontinue'],
+                MedHist['patientmedicalcomment']
+              ]);
+            }
+            
+  
+            // const res5 = await Promise.all([res2, res3, res4]);
 
-            // INSERT dans la table medicaments l'ID généré comme clé étrangère
 
-
-            const SQL_insert_medicaments = "INSERT INTO medicaments ( " + 
-            "susar_id," +
-            "master_id," +
-            "caseid," +
-            "specificcaseid," +
-            "dlpversion," +
-            "productcharacterization," +
-            "productname," +
-            "substancename," +
-            "active_substance_high_level," +
-            "nbblock," +
-            "nbblock2," +
-            "created_at," +
-            "updated_at " +
-            ") VALUES (" +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "CURRENT_TIMESTAMP, " +
-            "CURRENT_TIMESTAMP " +
-            ");" 
-
-            const res2 = await connectionSusarEu.query(SQL_insert_medicaments, [
-              idSUSAR_EU,
-              Medic['master_id'], 
-              Medic['caseid'], 
-              Medic['specificcaseid'], 
-              Medic['DLPVersion'], 
-              Medic['productcharacterization'], 
-              Medic['productname'], 
-              Medic['substancename'], 
-              highLevelSubName, 
-              Medic['NBBlock'], 
-              Medic['NBBlock2']
-            ]);
 
           }
-    
-    
-          // pour charger les effets indesirables
-    
-          // console.log ("Effets indesirables : ")
-          const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
-          for (const EI of EIFiltre) {
-            // console.log(EI['codereactionmeddrapt'] + " : " + 
-            //             EI['reactionmeddrapt']  + " (" + 
-            //             EI['reactionstartdate'] + ")" 
-            //             )
 
-            // INSERT dans la table effets_indesirables l'ID généré comme clé étrangère
-                        
-            const SQL_insert_EI = "INSERT INTO effets_indesirables ( " + 
-            "susar_id," +
-            "master_id," +
-            "caseid," +
-            "specificcaseid," +
-            "dlpversion," +
-            "reactionstartdate," +
-            "codereactionmeddrallt," +
-            "reactionmeddrallt," +
-            "codereactionmeddrapt," +
-            "reactionmeddrapt," +
-            "codereactionmeddrahlt," +
-            "reactionmeddrahlt," +
-            "codereactionmeddrahlgt," +
-            "reactionmeddrahlgt," +
-            "reactionmeddrasoc," +
-            "soc," +
-            "created_at," +
-            "updated_at " +
-            ") VALUES (" +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "CURRENT_TIMESTAMP, " +
-            "CURRENT_TIMESTAMP " +
-            ");" 
 
-            const res3 = await connectionSusarEu.query(SQL_insert_EI, [
-              idSUSAR_EU,
-              EI['master_id'], 
-              EI['caseid'], 
-              EI['specificcaseid'], 
-              EI['DLPVersion'], 
-              EI['reactionstartdate'],
-              EI['codereactionmeddrallt'],
-              EI['reactionmeddrallt'],
-              EI['codereactionmeddrapt'], 
-              EI['reactionmeddrapt'],
-              EI['codereactionmeddrahlt'], 
-              EI['reactionmeddrahlt'],
-              EI['codereactionmeddrahlgt'],
-              EI['reactionmeddrahlgt'],
-              EI['reactionmeddrasoc'], 
-              EI['soc'] 
-            ]);
-          }
-    
-    
-          // pour charger les "medical history"
-          // console.log ("Medical history : ")
-          const MedHistFiltre = MedHistBNPV.filter(MedHist => MedHist.master_id === susar['master_id']);
-          for (const MedHist of MedHistFiltre) {
-            // if (MedHist['patientmedicalcomment']==='') {
-            //   console.log(MedHist['code_PT'] + " : " + 
-            //               MedHist['lib_PT']
-            //               )
-            // } else {
-            //   console.log(MedHist['code_PT'] + " : " + 
-            //               MedHist['lib_PT'] + " (" +
-            //               MedHist['patientmedicalcomment'] + ")"
-            //               )
-            // }
 
-            // INSERT dans la table effets_indesirables l'ID généré comme clé étrangère
-            const SQL_insert_MedHist = "INSERT INTO medical_history ( " + 
-            "susar_id," +
-            "master_id," +
-            "disease_lib_llt," +
-            "disease_lib_pt," +
-            "disease_code_llt," +
-            "disease_code_pt," +
-            "continuing," +
-            "medicalcomment," +
-            "created_at," +
-            "updated_at " +
-            ") VALUES (" +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "? ," +
-            "CURRENT_TIMESTAMP, " +
-            "CURRENT_TIMESTAMP " +
-            ");" 
-
-            const res4 = await connectionSusarEu.query(SQL_insert_MedHist, [
-              idSUSAR_EU,
-              MedHist['master_id'], 
-              MedHist['lib_LLT'], 
-              MedHist['lib_PT'], 
-              MedHist['code_LLT'], 
-              MedHist['code_PT'],
-              MedHist['patientmedicalcontinue'],
-              MedHist['patientmedicalcomment']
-            ]);
-          }
-          
           // pour tester, sort après 5 susars
           if (i>5) {
             break
