@@ -270,7 +270,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
         for (const Medic of MedicsFiltre) {
           
           // pour charger le high level substance name
-          const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_high_le_low_level === Medic['substancename']);
+          const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_low_level === Medic['substancename']);
           let highLevelSubName = "" 
           for (const highLevel of objSubHighLevelFiltre) {
             if (highLevelSubName.length == 0) {
@@ -502,7 +502,7 @@ const donne_lstSubLowLevel = async (connectionSusarEu) => {
   const objSubLowLevel = await donne_objSubLowLevel(connectionSusarEu)
   // console.log(objSubLowLevel)
 
-  const lstSubLowLevel = objSubLowLevel.map(obj => obj.active_substance_high_le_low_level);
+  const lstSubLowLevel = objSubLowLevel.map(obj => obj.active_substance_low_level);
 
   return [objSubLowLevel,lstSubLowLevel];
 

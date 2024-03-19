@@ -3,7 +3,7 @@
  * @typedef {Object} active_substance_grouping
  * @property {number} : id
  * @property {string} : active_substance_high_level
- * @property {string} : active_substance_high_le_low_level
+ * @property {string} : active_substance_low_level
  * @property {number} : inactif
  * @property {Date} : date_fichier
  * @property {string} : utilisateur_import
