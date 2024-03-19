@@ -1,3 +1,11 @@
+
+import {
+  logStream , 
+  logger
+} from '../logs_config.js'
+
+
+
 /**
  * @typedef {import('../types').active_substance_grouping} active_substance_grouping
  * @typedef {import('../types').susar_eu} susar_eu
@@ -123,23 +131,26 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
     /*************************************************************************************** */        
     
     // boucle pour les INSERT dans les différentes tables 
-    let i = 0
+    let iTousSUSAR = 0
+    let iSUSAR_importes = 0
     
     for (const susar of lstSusarBNPV) {
-      i++
+      iTousSUSAR++
       
-      // pour tester, sort après xx susars
-      if (i>50) {
-        break
-      }
+      // // pour tester, sort après xx susars
+      // if (iTousSUSAR>50) {
+      //   break
+      // }
       console.log(susar['master_id'])
-
+      logger.info("Import du SUSAR (master_id) : " + susar['master_id'])
       // vérification avec les INSERT d'un SUSAR et des ses enregistrements liés :
       //      - On regarde que "susar['master_id']" n'existe pas déjà dans la table "susar_eu"
       //      - On regarde que "susar['specificcaseid'] AND susar['DLPVersion']" n'existe pas déjà dans la table "susar_eu"
       const isUnique = await isSUSAR_EU_unique (connectionSusarEu,susar['master_id'],susar['specificcaseid'],susar['DLPVersion'])
 
       if (isUnique) {
+
+        iSUSAR_importes++
         // console.log ("DonneesEtudeBNPV : ",DonneesEtudeBNPV)
         // On récupère les données de l'étude
         const DonneesEtudeFiltre = DonneesEtudeBNPV.filter(DonneesEtude => DonneesEtude.master_id === susar['master_id']);
@@ -450,19 +461,17 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
             MedHist['patientmedicalcomment']
           ]);
         }
-        
-
         // const res5 = await Promise.all([res2, res3, res4]);
+      } else {
 
-
-
+        logger.warn('pas d\'import pour ce SUSAR, il existait déjà dans la SUSAR_EU : ' +
+                    susar['master_id'] + " - " + 
+                    susar['specificcaseid'] + " - " + 
+                    susar['DLPVersion'])
       }
-
-
-
-  }
-
-
+    }
+    
+  logger.info("Nombre de SUSAR importés : " + iSUSAR_importes)
 
 /*************************************************************************************** */
 

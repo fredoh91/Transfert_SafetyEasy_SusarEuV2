@@ -1,5 +1,19 @@
-/**
- * @typedef {import('../types').active_substance_grouping} active_substance_grouping
+import {
+    sauvegardeObjet,
+    chargementObjet,
+    chargeObjBNPV_fromJSON
+  } from '../JSON_Save.js'
+
+
+  import {
+    logStream , 
+    logger
+  } from '../logs_config.js'
+  
+
+
+/** 
+ * @typedef {import('../types').active_substance_grouping} active_substance_grouping 
  * @typedef {import('../types').susar_eu} susar_eu
  * @typedef {import('../types').medicaments} medicaments
  * @typedef {import('../types').effets_indesirables} effets_indesirables
@@ -8,15 +22,6 @@
  * 
  */
 
-
-
-
-
-import {
-    sauvegardeObjet,
-    chargementObjet,
-    chargeObjBNPV_fromJSON
-  } from '../JSON_Save.js'
 
 
 
