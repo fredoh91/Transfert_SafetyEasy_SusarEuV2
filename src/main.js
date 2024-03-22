@@ -18,7 +18,6 @@
   import {
     donne_objSubLowLevel,
     effaceTablesSUSAR_EU,
-    isSUSAR_EU_unique,
     insertDataSUSAR_EU,
     donne_lstSubLowLevel
   } from './db/susarEuQueries.js'
@@ -38,7 +37,7 @@ import {
 
 const insertSUSAR_EU = async (poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV) => {
   const connectionSusarEu = await poolSusarEu.getConnection();
-  // await effaceTablesSUSAR_EU (connectionSusarEu)
+  await effaceTablesSUSAR_EU (connectionSusarEu)
   await insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV)
   await connectionSusarEu.release();
 }
@@ -94,6 +93,10 @@ if (typeSourceDonnees == "Base") {
   const connectionSusarEu = await poolSusarEu.getConnection();
   
   // const [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
+
+  // console.log (donne_lstSubLowLevel(connectionSusarEu)  )
+  // process.exit(0)
+
   [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
   
   connectionSusarEu.release();

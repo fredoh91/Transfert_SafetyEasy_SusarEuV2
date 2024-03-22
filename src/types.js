@@ -94,3 +94,14 @@
  * @property {string} : num_eudract
  * @property {string} : pays_etude
  */
+
+/**
+ * @typedef {Object} intervenant_substance_dmm
+ * @property {number} : id
+ * @property {string} : dmm
+ * @property {string} : pole_long
+ * @property {string} : pole_court
+ * @property {string} : evaluateur
+ * @property {string} : active_substance_high_level
+ * @property {string} : type_sa_ms_mono
+ */

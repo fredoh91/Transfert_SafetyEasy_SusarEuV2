@@ -1,5 +1,5 @@
 .env
 node_modules/
-logs/
-JSON_Save/
+# logs/
+# JSON_Save/
 nodemon.json

@@ -29,8 +29,15 @@ import {
    * 
    * @param {Pool} poolSafetyEasy 
    * @param {Array<[active_substance_grouping[]]} objSubLowLevel 
-   * @param {Array.<string>} lstSubLowLevel : tableau des low-level substance name suivis par la France
-   * @returns 
+   * @param {Array<string>} lstSubLowLevel : tableau des low-level substance name suivis par la France
+   * @returns {Promise
+   *            <Array
+   *                <Array<susar_eu>>
+   *                <Array<medicaments>>
+   *                <Array<effets_indesirables>>
+   *                <Array<medical_history>>
+   *                <Array<donnees_etude>>
+   * >}
    */
   const RecupDonneesBNPV = async (poolSafetyEasy,objSubLowLevel,lstSubLowLevel,datePivot = new Date()) => {
 
@@ -47,7 +54,11 @@ import {
 // // ---------------------------------------------------------------------------------------------------
 // // --      fin des requetes dans SUSAR_EU pour récupérer la liste des low-level substance name      --
 // // ---------------------------------------------------------------------------------------------------
-
+    /**
+     * 
+     * @param {Array<susar_eu>} LstSusarBNPV 
+     * @returns {Promise<Array<number>>}
+     */
     const donne_lstMasterId = async (LstSusarBNPV) => {
       return LstSusarBNPV.map(obj => obj.master_id)
     }
@@ -106,7 +117,7 @@ import {
  * @param {Date} datePivotStatus : date pivot pour calculer le "statusDate between ...
  * @param {number} NbJourAvant : nombre de jour à retrancher à la date pivot pour calculer le "statusDate between ...
  * @param {number} NbJourApres : nombre de jour à ajouter à la date pivot pour calculer le "statusDate between ... 
- * @returns {Array<susar_eu>} : un tableau d'objet avec la liste des susars
+ * @returns {Promise<Array<susar_eu>>} : une promesse de tableau d'objet avec la liste des susars
  */
 async function getSusarBNPV(poolSafetyEasy, lstSubLowLevel, datePivotStatus, NbJourAvant, NbJourApres) {
     const connectionSafetyEasy = await poolSafetyEasy.getConnection();
@@ -160,11 +171,12 @@ async function getSusarBNPV(poolSafetyEasy, lstSubLowLevel, datePivotStatus, NbJ
                                             " LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock " +
                                             " WHERE 1 = 1 " +
                                             " AND specificcaseid LIKE 'EC%' AND su.substancename IN  (" + substanceNames + ") " +
+                                            " AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
                                             " AND mv.Deleted = 0) " + 
                     "ORDER BY mv.id;"
 
 // console.log(SQL)
-
+// process.exit(0)
 
     const [LstSusarBNPV, champs] = await connectionSafetyEasy.query(SQL);
     // console.log(LstSusarBNPV[0])
@@ -178,7 +190,7 @@ async function getSusarBNPV(poolSafetyEasy, lstSubLowLevel, datePivotStatus, NbJ
  * 
  * @param {Pool} poolSafetyEasy 
  * @param {Array<number>} lstMasterId : tableau des masterId recherchés
- * @returns {Array<medicaments>} : un tableau d'objet medicaments 
+ * @returns {Promise<Array<medicaments>>} : un tableau d'objet medicaments 
  */
 async function getMedicBNPV(poolSafetyEasy, lstMasterId ) {
     const connectionSafetyEasy = await poolSafetyEasy.getConnection();
@@ -213,7 +225,7 @@ async function getMedicBNPV(poolSafetyEasy, lstMasterId ) {
  * 
  * @param {Pool} poolSafetyEasy 
  * @param {Array<number>} lstMasterId : tableau des masterId recherchés
- * @returns {Array<donnees_etude>} : un tableau d'objet donnees_etude 
+ * @returns {Promise<Array<donnees_etude>>} : un tableau d'objet donnees_etude 
  */
 async function getDonneesEtudeBNPV(poolSafetyEasy, lstMasterId ) {
     const connectionSafetyEasy = await poolSafetyEasy.getConnection();
@@ -249,7 +261,7 @@ async function getDonneesEtudeBNPV(poolSafetyEasy, lstMasterId ) {
  * 
  * @param {Pool} poolSafetyEasy 
  * @param {Array<number>} lstMasterId : tableau des masterId recherchés
- * @returns {Array<effets_indesirables>} : un tableau d'objet effets_indesirables 
+ * @returns {Promise<Array<effets_indesirables>>} : un tableau d'objet effets_indesirables 
  */
 async function getEIBNPV(poolSafetyEasy, lstMasterId ) {
     const connectionSafetyEasy = await poolSafetyEasy.getConnection();
@@ -291,7 +303,7 @@ async function getEIBNPV(poolSafetyEasy, lstMasterId ) {
  * 
  * @param {Pool} poolSafetyEasy 
  * @param {Array<number>} lstMasterId : tableau des masterId recherchés
- * @returns {Array<medical_history>} : un tableau d'objet medical_history 
+ * @returns {Promise<Array<medical_history>>} : un tableau d'objet medical_history 
  */
 async function getMedHistBNPV(poolSafetyEasy, lstMasterId ) {
     const connectionSafetyEasy = await poolSafetyEasy.getConnection();

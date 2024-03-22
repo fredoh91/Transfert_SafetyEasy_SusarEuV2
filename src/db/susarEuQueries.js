@@ -13,6 +13,7 @@ import {
  * @typedef {import('../types').effets_indesirables} effets_indesirables
  * @typedef {import('../types').medical_history} medical_history
  * @typedef {import('../types').donnees_etude} donnees_etude
+ * @typedef {import('../types').intervenant_substance_dmm} intervenant_substance_dmm
  * 
  */
 
@@ -21,20 +22,37 @@ import {
  * donne_objSubLowLevel : récupération de la table de correspondance high level / low level
  * 
  * @param {Connection} connectionSusarEu 
- * @returns {Array<[active_substance_grouping[]]>} retourne un tableau d'objet active_substance_grouping :
+ * @returns {Promise<Array<[active_substance_grouping[]]>>} retourne une promesse de tableau d'objet active_substance_grouping :
  *            - contenu du résultat de la requête vers la table high-level/low-level substance name
  */
 async function  donne_objSubLowLevel (connectionSusarEu) {
     const results = await connectionSusarEu.query(
-      'SELECT * FROM active_substance_grouping WHERE active_substance_grouping.inactif = 0 ;'
+      "SELECT * FROM active_substance_grouping WHERE active_substance_grouping.inactif = 0 ;"
     );
     // console.log(results[0][0])
     // console.log(results[0])
     // const lstSubLowLevel = results[0].map(obj => obj.active_substance_high_le_low_level);
 
     return results[0];
+    // return Promise.resolve(results[0]);
   }
 
+
+/**
+ * Permet de retourner le contenu de la table intervenant_substance_dmm pour pouvoir attribuer une DMM, pôle, évaluateur a un susar
+ * 
+ * @param {Connection} connectionSusarEu : connection MySQL2
+ * @returns {Promise<Array<intervenant_substance_dmm>>} : retourne une promesse de tableau d'objet intervenant_substance_dmm
+ */
+  async function  donne_objIntSubDmm (connectionSusarEu) {
+    const results = await connectionSusarEu.query(
+      "SELECT isd.id, isd.dmm, isd.pole_long, isd.pole_court, isd.evaluateur, isd.active_substance_high_level, isd.type_sa_ms_mono " + 
+      "FROM intervenant_substance_dmm isd " +
+      "WHERE inactif = 0 "
+    );
+
+    return results[0];
+  }
 
 
 /**
@@ -50,8 +68,10 @@ async function  donne_objSubLowLevel (connectionSusarEu) {
       const res_4 = connectionSusarEu.query('TRUNCATE effets_indesirables;');
       const res_5 = connectionSusarEu.query('TRUNCATE indications;');
       const res_6 = connectionSusarEu.query('TRUNCATE medical_history;');
-      const [resu_2, resu_3, resu_4, resu_5, resu_6] = await Promise.all([res_2, res_3, res_4, res_5, res_6]);
-      const resu_7 = await connectionSusarEu.query('SET FOREIGN_KEY_CHECKS = 1;');
+      const res_7 = connectionSusarEu.query('TRUNCATE intervenant_substance_dmm_susar_eu;');
+      const [resu_2, resu_3, resu_4, resu_5, resu_6] = await Promise.all([res_2, res_3, res_4, res_5, res_6, res_7]);
+      await connectionSusarEu.query('SET FOREIGN_KEY_CHECKS = 1;');
+      // const resu_fin = await connectionSusarEu.query('SET FOREIGN_KEY_CHECKS = 1;');
     } catch (err) {
       console.error(erreur);
     } finally {
@@ -62,17 +82,17 @@ async function  donne_objSubLowLevel (connectionSusarEu) {
 
 
 /**
- * isSUSAR_EU_unique : Avant insertion d'une ligne dans la table susar_eu,
+ * isUnique_SUSAR_EU : Avant insertion d'une ligne dans la table susar_eu,
  *        cette fonction vérifie que la ligne n'exite pas déjà
  * 
  * @param {Connection} connectionSusarEu 
  * @param {number} master_id 
  * @param {string} specificcaseid 
  * @param {number} DLPVersion 
- * @returns {boolean} : retourne un booléen, si TRUE le susar n'existe pas, on pourra le créer 
+ * @returns {Promise<boolean>} : retourne une promesse contenant un booléen, si TRUE le susar n'existe pas, on pourra le créer 
  *                                 si FALSE le susar existe, il ne faudra pas le créer
  */
-async function isSUSAR_EU_unique (connectionSusarEu,master_id,specificcaseid,DLPVersion) {
+async function isUnique_SUSAR_EU (connectionSusarEu,master_id,specificcaseid,DLPVersion) {
   const SQL_master_id_unique = `SELECT 
                                   COUNT(susar_eu.id) AS nb
                                 FROM
@@ -104,6 +124,35 @@ async function isSUSAR_EU_unique (connectionSusarEu,master_id,specificcaseid,DLP
   }
 }
 
+/**
+ * 
+ * @param {Connection} connectionSusarEu 
+ * @param {number} susar_eu_id 
+ * @param {number} intervenant_substance_dmm_id 
+ * @returns {Promise<boolean>} : retourne une promesse contenant un booléen, si TRUE le couple susar_eu/intervenant_substance_dmm n'existe pas, on pourra le créer dans la table intervenant_substance_dmm_susar_eu
+ *                                 si FALSE il existe, il ne faudra pas le créer dans la table intervenant_substance_dmm_susar_eu
+ */
+async function isUnique_intervenant_substance_dmm_susar_eu (connectionSusarEu,susar_eu_id,intervenant_substance_dmm_id) {
+
+  const SQL_intervenant_substance_dmm_susar_eu_unique = `SELECT
+                                                          COUNT(isds.susar_eu_id) AS nb
+                                                        FROM
+                                                          intervenant_substance_dmm_susar_eu isds
+                                                        WHERE
+                                                          isds.susar_eu_id = ${susar_eu_id}
+                                                          AND isds.intervenant_substance_dmm_id = ${intervenant_substance_dmm_id}
+                                                          ;`
+  try {
+    const res = await connectionSusarEu.query(SQL_intervenant_substance_dmm_susar_eu_unique)
+    if(res[0][0]['nb'] === 0 ) { 
+      return true
+    } else {
+      return false
+    }
+  } catch (err) {
+    console.error(erreur);
+  } finally {}
+}
 
 
 /**
@@ -125,11 +174,17 @@ async function isSUSAR_EU_unique (connectionSusarEu,master_id,specificcaseid,DLP
 async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV) {
   try {
 
+    // récupération de la liste des intervenant_substance_dmm
+    const objIntSubDmm = await donne_objIntSubDmm (connectionSusarEu) 
+
     // début de la transaction
     await connectionSusarEu.beginTransaction();
     
     /*************************************************************************************** */        
     
+    // 
+
+
     // boucle pour les INSERT dans les différentes tables 
     let iTousSUSAR = 0
     let iSUSAR_importes = 0
@@ -137,16 +192,16 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
     for (const susar of lstSusarBNPV) {
       iTousSUSAR++
       
-      // // pour tester, sort après xx susars
+      // pour tester, sort après xx susars
       // if (iTousSUSAR>50) {
       //   break
       // }
-      console.log(susar['master_id'])
+      console.log(iTousSUSAR,":",susar['master_id'])
       logger.info("Import du SUSAR (master_id) : " + susar['master_id'])
       // vérification avec les INSERT d'un SUSAR et des ses enregistrements liés :
       //      - On regarde que "susar['master_id']" n'existe pas déjà dans la table "susar_eu"
       //      - On regarde que "susar['specificcaseid'] AND susar['DLPVersion']" n'existe pas déjà dans la table "susar_eu"
-      const isUnique = await isSUSAR_EU_unique (connectionSusarEu,susar['master_id'],susar['specificcaseid'],susar['DLPVersion'])
+      const isUnique = await isUnique_SUSAR_EU (connectionSusarEu,susar['master_id'],susar['specificcaseid'],susar['DLPVersion'])
 
       if (isUnique) {
 
@@ -259,7 +314,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
           pays_etude
         ]);
         // console.log(res1)
-        // Récupérez l'ID généré lors du premier INSERT
+        // Récupération l'ID généré lors de l'INSERT dans la table susar_eu
         const idSUSAR_EU = res1[0].insertId;
         
         // console.log ("idSUSAR_EU : ",idSUSAR_EU)
@@ -272,13 +327,39 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
           // pour charger le high level substance name
           const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_low_level === Medic['substancename']);
           let highLevelSubName = "" 
+          let tabHighLevelSubName = [];
+
           for (const highLevel of objSubHighLevelFiltre) {
-            if (highLevelSubName.length == 0) {
-              highLevelSubName = highLevel['active_substance_high_level']
-            } else {
-              highLevelSubName += "/" + highLevel['active_substance_high_level']
+            if (highLevelSubName.indexOf(highLevel['active_substance_high_level']) === -1) {
+
+              // recherche dans le tableau des eval/SA_high_level : objIntSubDmm
+              
+              const objIntSubDmmFiltre = objIntSubDmm.filter(objIntSubDmm => objIntSubDmm.active_substance_high_level === highLevel['active_substance_high_level']);
+
+              for (const IntSubDmm of objIntSubDmmFiltre) {
+                // console.log(IntSubDmm['active_substance_high_level'])
+                tabHighLevelSubName.push(IntSubDmm['id'])
+              }
+
+              // console.log (objIntSubDmmFiltre)
+              // process.exit(0)
+
+              if (highLevelSubName.length === 0) {
+                highLevelSubName = highLevel['active_substance_high_level'];
+              } else {
+                highLevelSubName += '/' + highLevel['active_substance_high_level'];
+              }
             }
           }
+          
+          
+          // for (const highLevel of objSubHighLevelFiltre) {
+          //   if (highLevelSubName.length == 0) {
+          //     highLevelSubName = highLevel['active_substance_high_level']
+          //   } else {
+          //     highLevelSubName += "/" + highLevel['active_substance_high_level']
+          //   }
+          // }
   
           // // console.log(objSubhighLevelFiltre[0])
           // console.log(Medic['NBBlock'] + " : " + 
@@ -333,12 +414,34 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
             Medic['NBBlock'], 
             Medic['NBBlock2']
           ]);
+          
+          // Récupération l'ID généré lors de l'INSERT dans la table medicaments : si un jour on décide de relier la table medicament et la table intervenant_substance_dmm
+          // const idmedicaments = res1[0].insertId
 
+          // On boucle sur la variable tabHighLevelSubName qui contient les id de la table intervenant_substance_dmm avec les active_substance_high_level que l'on souhaite
+
+          for (const [idx, idIntSubDmm] of tabHighLevelSubName.entries()) {
+            // console.log(idSUSAR_EU," ",idIntSubDmm)
+            const isUniqueIntSubDmmSusar = await isUnique_intervenant_substance_dmm_susar_eu(connectionSusarEu,idSUSAR_EU,idIntSubDmm)
+            if (isUniqueIntSubDmmSusar) {
+              // INSERT dans la table de liaison susar_eu/intervenant_substance_dmm des ID des deux tables comme clefs étrangères
+              const SQL_insert_intervenant_substance_dmm_susar_eu = "INSERT INTO intervenant_substance_dmm_susar_eu ( " +
+                "susar_eu_id," +
+                "intervenant_substance_dmm_id" +
+                ") VALUES (" +
+                "? ," +
+                "? " +
+                ");"
+  
+              const res2_2 = await connectionSusarEu.query(SQL_insert_intervenant_substance_dmm_susar_eu, [
+                idSUSAR_EU,
+                idIntSubDmm
+              ])
+            }
+          }
         }
   
-  
         // pour charger les effets indesirables
-  
         // console.log ("Effets indesirables : ")
         const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
         for (const EI of EIFiltre) {
@@ -490,21 +593,22 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
  * début de la requete dans SUSAR_EU pour récupérer la liste des low-level substance name
  * 
  * @param {Connection} connectionSusarEu 
- * @returns {Array<[
+ * @returns {Promise<
+ * Array<[
  *    active_substance_grouping[], 
  *    String[]
- * ]>} [objSubLowLevel,lstSubLowLevel] : reourne un tableau :
+ * ]>>} [objSubLowLevel,lstSubLowLevel] : reourne un tableau :
  *            - objSubLowLevel : Objet : contenu du résultat de la requête vers la table high-level/low-level substance name
  *            - lstSubLowLevel : Tableau : liste des low-level substance name
  */
 const donne_lstSubLowLevel = async (connectionSusarEu) => {
 
   const objSubLowLevel = await donne_objSubLowLevel(connectionSusarEu)
-  // console.log(objSubLowLevel)
 
   const lstSubLowLevel = objSubLowLevel.map(obj => obj.active_substance_low_level);
-
+  
   return [objSubLowLevel,lstSubLowLevel];
+  // return Promise.resolve([objSubLowLevel,lstSubLowLevel]);
 
 }
 
@@ -513,7 +617,6 @@ const donne_lstSubLowLevel = async (connectionSusarEu) => {
 export { 
     donne_objSubLowLevel,
     effaceTablesSUSAR_EU,
-    isSUSAR_EU_unique,
     insertDataSUSAR_EU,
     donne_lstSubLowLevel
 };
