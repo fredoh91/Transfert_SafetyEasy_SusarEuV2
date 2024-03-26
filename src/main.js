@@ -34,10 +34,19 @@ import {
   logger
 } from './logs_config.js'
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import dotenv from 'dotenv';
+
+const currentUrl = import.meta.url;
+const currentDir = path.dirname(fileURLToPath(currentUrl));
+const envPath = path.resolve(currentDir, '.', '.env');
+dotenv.config({ path: envPath });
 
 const insertSUSAR_EU = async (poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV) => {
   const connectionSusarEu = await poolSusarEu.getConnection();
-  await effaceTablesSUSAR_EU (connectionSusarEu)
+  // await effaceTablesSUSAR_EU (connectionSusarEu)
   await insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV)
   await connectionSusarEu.release();
 }
@@ -47,76 +56,41 @@ const main = async () => {
   // traitement principal
   logger.info('Début import : Safety Easy => SUSAR_EU_v2');
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Utilisez le logger comme d'habitude
-// logger.info('Message de journalisation');
-// logger.error('Une erreur est survenue');
+  const poolSusarEu = await createPoolSusarEu();
+  const poolSafetyEasy = await createPoolSafetyEasy();
 
-// Pour la journalisation des écritures MySQL, vous pouvez utiliser le logger de la même manière
-// Par exemple :
-// const mysqlLogger = logger.child({ component: 'mysql' });
+  // const typeSourceDonnees = "Base"
+  // const typeSourceDonnees = "Json"
+  const typeSourceDonnees = process.env.TYPESOURCEDONNEES
 
-// // Exemple d'utilisation du logger MySQL
-// mysqlLogger.info('Requête MySQL exécutée avec succès');
-// mysqlLogger.error('Erreur lors de l\'exécution de la requête MySQL');
+  logger.debug('Type d\'origine des données : ' + typeSourceDonnees);
 
-// // Vous pouvez également utiliser le logStream si nécessaire
-// // Par exemple :
-// logStream.write('Un message directement vers le flux de journalisation');
+  let objSubLowLevel
+  let lstSubLowLevel
+  let lstSusarBNPV
+  let MedicBNPV
+  let EIBNPV
+  let MedHistBNPV
+  let DonneesEtudeBNPV
 
-// // Fermez le flux de journalisation lorsque vous avez terminé d'écrire des journaux
-// logStream.end();
-/////////////////////////////////////////////////////////////////////////////////////
+  if (typeSourceDonnees == "Base") {
 
+    // Récupération de la liste des low-level substance name dans SUSAR_EU
+    const connectionSusarEu = await poolSusarEu.getConnection();
+    [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
+    connectionSusarEu.release();
+    
+    // Récupération des données dans Safety Easy
+    [lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV] = await RecupDonneesBNPV(poolSafetyEasy,objSubLowLevel,lstSubLowLevel)
 
-const poolSusarEu = await createPoolSusarEu();
-const poolSafetyEasy = await createPoolSafetyEasy();
+  } else if (typeSourceDonnees == "Json") {
+    
+    // Récupération des données d'origine Safety Easy dans des fichiers JSON 
+    [objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV] = await chargeObjBNPV_fromJSON()
 
-// const typeSourceDonnees = "Base"
-const typeSourceDonnees = "Json"
-
-logger.debug('Type d\'origine des données : ' + typeSourceDonnees);
-
-let objSubLowLevel
-let lstSubLowLevel
-let lstSusarBNPV
-let MedicBNPV
-let EIBNPV
-let MedHistBNPV
-let DonneesEtudeBNPV
-
-if (typeSourceDonnees == "Base") {
-  
-  // ------------------------------------------------------------------------------------------------------
-  // --      début de la requete dans SUSAR_EU pour récupérer la liste des low-level substance name      --
-  // ------------------------------------------------------------------------------------------------------
-  const connectionSusarEu = await poolSusarEu.getConnection();
-  
-  // const [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
-
-  // console.log (donne_lstSubLowLevel(connectionSusarEu)  )
-  // process.exit(0)
-
-  [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
-  
-  connectionSusarEu.release();
-  // ---------------------------------------------------------------------------------------------------
-  // --      fin des requetes dans SUSAR_EU pour récupérer la liste des low-level substance name      --
-  // ---------------------------------------------------------------------------------------------------
-  
-  
-  [lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV] = await RecupDonneesBNPV(poolSafetyEasy,objSubLowLevel,lstSubLowLevel)
-
-
-} else if (typeSourceDonnees == "Json") {
-
-  [objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV] = await chargeObjBNPV_fromJSON()
-
-}
+  }
 
   await closePoolSafetyEasy(poolSafetyEasy)
-
-  
   await insertSUSAR_EU(poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV);
 
   // const effTbSUSAR_EU = await effaceTablesSUSAR_EU(connectionSusarEu)

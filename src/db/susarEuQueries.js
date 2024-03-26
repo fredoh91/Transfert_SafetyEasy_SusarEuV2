@@ -17,6 +17,35 @@ import {
  * 
  */
 
+/**
+ * 
+ * @param {Connection} connectionSusarEu 
+ * @param {string} actSub_hl : substance active (high level)
+ * @param {number} codePt : code Meddra PT
+ * @returns {Promise<null|number>} : si le couple substance/code PT n'existe pas : retourne null
+ *                            si le couple substance/code PT existe : retourne l'id de ce couple dans la table substance_pt
+ */
+async function isAlreadyExist_substance_pt (connectionSusarEu,actSub_hl,codePt) {
+    const SQL_isAlreadyExist = "SELECT sp.id, " +
+                                      "sp.active_substance_high_level, " +
+                                      "sp.codereactionmeddrapt " +
+                                "FROM substance_pt sp " + 
+                                "WHERE sp.active_substance_high_level = ? " +
+                                  "AND sp.codereactionmeddrapt = ? ;"
+    const results = await connectionSusarEu.query(SQL_isAlreadyExist, [
+                                                    actSub_hl,
+                                                    codePt
+                                                  ] 
+    );
+
+    if (results[0].length > 0) {
+      // on a déja ce couple dans la table substance_pt
+      return results[0][0].id
+    } else {
+      // on n'a pas encore ce couple dans la table substance_pt
+      return null
+    }
+  }
 
 /**
  * donne_objSubLowLevel : récupération de la table de correspondance high level / low level
@@ -44,9 +73,9 @@ async function  donne_objSubLowLevel (connectionSusarEu) {
  * @param {Connection} connectionSusarEu : connection MySQL2
  * @returns {Promise<Array<intervenant_substance_dmm>>} : retourne une promesse de tableau d'objet intervenant_substance_dmm
  */
-  async function  donne_objIntSubDmm (connectionSusarEu) {
+  async function donne_objIntSubDmm (connectionSusarEu) {
     const results = await connectionSusarEu.query(
-      "SELECT isd.id, isd.dmm, isd.pole_long, isd.pole_court, isd.evaluateur, isd.active_substance_high_level, isd.type_sa_ms_mono " + 
+      "SELECT isd.id, isd.dmm, isd.pole_long, isd.pole_court, isd.evaluateur, isd.active_substance_high_level, isd.type_sa_ms_mono, association_de_substances " + 
       "FROM intervenant_substance_dmm isd " +
       "WHERE inactif = 0 "
     );
@@ -69,7 +98,23 @@ async function  donne_objSubLowLevel (connectionSusarEu) {
       const res_5 = connectionSusarEu.query('TRUNCATE indications;');
       const res_6 = connectionSusarEu.query('TRUNCATE medical_history;');
       const res_7 = connectionSusarEu.query('TRUNCATE intervenant_substance_dmm_susar_eu;');
-      const [resu_2, resu_3, resu_4, resu_5, resu_6] = await Promise.all([res_2, res_3, res_4, res_5, res_6, res_7]);
+      const res_8 = connectionSusarEu.query('TRUNCATE substance_pt;');
+      const res_9 = connectionSusarEu.query('TRUNCATE substance_pt_susar_eu;');
+      const [
+          resu_2, 
+          resu_3, 
+          resu_4, 
+          resu_5, 
+          resu_6
+            ] = await Promise.all([
+                                res_2, 
+                                res_3, 
+                                res_4, 
+                                res_5, 
+                                res_6, 
+                                res_7, 
+                                res_8,
+                                res_9]);
       await connectionSusarEu.query('SET FOREIGN_KEY_CHECKS = 1;');
       // const resu_fin = await connectionSusarEu.query('SET FOREIGN_KEY_CHECKS = 1;');
     } catch (err) {
@@ -181,9 +226,6 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
     await connectionSusarEu.beginTransaction();
     
     /*************************************************************************************** */        
-    
-    // 
-
 
     // boucle pour les INSERT dans les différentes tables 
     let iTousSUSAR = 0
@@ -192,8 +234,8 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
     for (const susar of lstSusarBNPV) {
       iTousSUSAR++
       
-      // pour tester, sort après xx susars
-      // if (iTousSUSAR>50) {
+      // // pour tester, sort après xx susars
+      // if (iTousSUSAR > 5) {
       //   break
       // }
       console.log(iTousSUSAR,":",susar['master_id'])
@@ -321,7 +363,8 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
         
         // pour charger les médicaments
         const MedicsFiltre = MedicBNPV.filter(Medic => Medic.master_id === susar['master_id']);
-  
+        
+        let tabLibHighLevelSubName = [];
         for (const Medic of MedicsFiltre) {
           
           // pour charger le high level substance name
@@ -343,6 +386,11 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
 
               // console.log (objIntSubDmmFiltre)
               // process.exit(0)
+              
+              // tableau pour creer les lignes dans la table substance_pt
+              if (tabLibHighLevelSubName.indexOf(highLevel['active_substance_high_level']) === -1) {
+                tabLibHighLevelSubName.push(highLevel['active_substance_high_level'])
+              }
 
               if (highLevelSubName.length === 0) {
                 highLevelSubName = highLevel['active_substance_high_level'];
@@ -351,7 +399,8 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
               }
             }
           }
-          
+
+
           
           // for (const highLevel of objSubHighLevelFiltre) {
           //   if (highLevelSubName.length == 0) {
@@ -440,11 +489,27 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
             }
           }
         }
-  
+        
+        // console.log(tabLibHighLevelSubName)
+
         // pour charger les effets indesirables
         // console.log ("Effets indesirables : ")
         const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
+
+        let tabMeddraPt = []; 
+
         for (const EI of EIFiltre) {
+
+          // Remplissage du tableau d'objet tabMeddraPt
+          const objTempo = {
+            codereactionmeddrapt: EI['codereactionmeddrapt'],
+            reactionmeddrapt: EI['reactionmeddrapt']
+          }
+          const objExist = tabMeddraPt.some(objet => objet.codereactionmeddrapt === objTempo.codereactionmeddrapt 
+                                                  && objet.reactionmeddrapt === objTempo.reactionmeddrapt);
+          if (!objExist) {
+            tabMeddraPt.push(objTempo)
+          }
           // console.log(EI['codereactionmeddrapt'] + " : " + 
           //             EI['reactionmeddrapt']  + " (" + 
           //             EI['reactionstartdate'] + ")" 
@@ -511,7 +576,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
             EI['soc'] 
           ]);
         }
-  
+        // console.log(tabMeddraPt)
   
         // pour charger les "medical history"
         // console.log ("Medical history : ")
@@ -564,6 +629,68 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
             MedHist['patientmedicalcomment']
           ]);
         }
+
+        // on boucle sur les substances - tabLibHighLevelSubName :
+        for (const LibHighLevelSubName of tabLibHighLevelSubName) {
+
+          // on boucle sur les EI_PT - tabMeddraPt (codereactionmeddrapt,reactionmeddrapt)
+          for (const MeddraPt of tabMeddraPt) {
+
+            // console.log (LibHighLevelSubName,MeddraPt.codereactionmeddrapt)
+            
+            // requete dans la table substance_pt pour voir si le couple substance/CodePT n'existe pas déja 
+            const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,LibHighLevelSubName,MeddraPt.codereactionmeddrapt)
+            let id_substance_pt = null
+            if (id_substance_pt_2 != null) {
+              id_substance_pt = id_substance_pt_2
+              //      - si OUI : - on récupère substance_pt.id
+              //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+              //                    - susar_eu_id = idSUSAR_EU
+              //                    - substance_pt_id = substance_pt.id
+            } else {
+              //      - si NON : - on crée une ligne dans substance_pt.id
+              //                 - on récupère substance_pt.id ainsi crée
+              //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+              //                    - susar_eu_id = idSUSAR_EU
+              //                    - substance_pt_id = substance_pt.id
+              const SQL_insert_substance_pt = "INSERT INTO substance_pt ( " + 
+                        "active_substance_high_level," +
+                        "codereactionmeddrapt," +
+                        "reactionmeddrapt," +
+                        "created_at," +
+                        "updated_at " +
+                        ") VALUES (" +
+                        "? ," +
+                        "? ," +
+                        "? ," +
+                        "CURRENT_TIMESTAMP, " +
+                        "CURRENT_TIMESTAMP " +
+                        ");"
+              const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
+                LibHighLevelSubName,
+                MeddraPt.codereactionmeddrapt, 
+                MeddraPt.reactionmeddrapt
+              ]);
+              id_substance_pt = res_insert_substance_pt[0].insertId;
+            }
+            
+            const SQL_insert_substance_pt_susar_eu = "INSERT INTO substance_pt_susar_eu ( " + 
+                      "substance_pt_id," +
+                      "susar_eu_id" +
+                      ") VALUES (" +
+                      "? ," +
+                      "? " +
+                      ");"
+            const res_insert_substance_pt_susar_eu = await connectionSusarEu.query(SQL_insert_substance_pt_susar_eu, [
+              id_substance_pt,
+              idSUSAR_EU
+            ]);
+
+
+          } 
+        }
+
+
         // const res5 = await Promise.all([res2, res3, res4]);
       } else {
 

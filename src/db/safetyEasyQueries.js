@@ -211,6 +211,7 @@ async function getMedicBNPV(poolSafetyEasy, lstMasterId ) {
                 "WHERE " + 
                     "1 = 1 " + 
                     "AND specificcaseid LIKE 'EC%' " + 
+                    "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
                     "AND mv.id IN ( " + lstMasterId + ") " + 
                     "AND mv.Deleted = 0; "
     

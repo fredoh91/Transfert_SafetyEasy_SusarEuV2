@@ -104,4 +104,5 @@
  * @property {string} : evaluateur
  * @property {string} : active_substance_high_level
  * @property {string} : type_sa_ms_mono
+ * @property {boolean} : association_de_substances
  */

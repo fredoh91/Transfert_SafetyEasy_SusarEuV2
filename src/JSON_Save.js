@@ -10,10 +10,17 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const currentUrl = import.meta.url;
+const currentDir = path.dirname(fileURLToPath(currentUrl));
 
 async function sauvegardeObjet(obj, objName ) {
     // Créer le répertoire s'il n'existe pas déjà
-    const jsonDir = '../JSON_Save';
+    // const jsonDir = '../JSON_Save';
+    const jsonDir = path.resolve(currentDir, '../JSON_Save');
+    // const jsonDir = path.join('..', 'JSON_Save', 'objSubLowLevel.json');
+    
     if (!fs.existsSync(jsonDir)) {
       fs.mkdirSync(jsonDir);
     }
@@ -26,7 +33,8 @@ async function sauvegardeObjet(obj, objName ) {
 
 async function chargementObjet(objName ) {
     // répertoire de sauvegarde
-    const jsonDir = '../JSON_Save';
+    // const jsonDir = '../JSON_Save';
+    const jsonDir = path.resolve(currentDir, '../JSON_Save');
     const filePath = path.join(jsonDir, objName + '.json');
     // fs.writeFileSync(filePath, jsonData);
 
@@ -37,15 +45,16 @@ async function chargementObjet(objName ) {
 }
 
 /**
+ * Permet de charger les fichiers JSON qui sont dans le répertoire ../JSON_Save/, pour éviter les multiples requêtes dans la BNPV pendant les DEV
  * 
- * @returns {Array<[
+ * @returns {Promise<Array<[
  *    active_substance_grouping[], 
  *    susar_eu[], 
  *    medicaments[], 
  *    effets_indesirables[], 
  *    medical_history[], 
  *    donnees_etude[]
- * ]>}
+ * ]>>}
  */
 async function chargeObjBNPV_fromJSON() {
 

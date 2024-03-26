@@ -1,6 +1,16 @@
 import mysql from 'mysql2/promise';
-import 'dotenv/config'
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+
+// import 'dotenv/config'
+import dotenv from 'dotenv';
+
+// const envPath = path.resolve(__dirname, '..', '.env');
+const currentUrl = import.meta.url;
+const currentDir = path.dirname(fileURLToPath(currentUrl));
+const envPath = path.resolve(currentDir, '..', '.env');
+dotenv.config({ path: envPath });
 
 // -------------------------------------------------------------------------------
 // --            Création d'un pool de connexion pour la base SUSAR_EU          --
