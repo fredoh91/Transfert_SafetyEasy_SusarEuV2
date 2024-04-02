@@ -66,10 +66,11 @@ import {
 // -------------------------------------------------------------------------------
 // --             début des requetes dans la BNPV           --
 // -------------------------------------------------------------------------------
-
+    logger.debug('Import de la date : ' + datePivot);
 // const lstSusarBNPV = await getSusarBNPV(poolSafetyEasy, lstSubLowLevel, new Date(),5,1)
     const lstSusarBNPV = await getSusarBNPV(poolSafetyEasy, lstSubLowLevel, datePivot, 3 ,1)
     // console.log(lstSusarBNPV[0])
+    logger.debug('La fonction getSusarBNPV() a retourné le nombre suivant de SUSAR à traiter : ' + lstSusarBNPV.length);
 
     const lstMasterId = await donne_lstMasterId (lstSusarBNPV)
     // console.log(lstMasterId)
