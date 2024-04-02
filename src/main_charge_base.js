@@ -18,7 +18,6 @@
   import {
     donne_objSubLowLevel,
     effaceTablesSUSAR_EU,
-    isSUSAR_EU_unique,
     insertDataSUSAR_EU,
     donne_lstSubLowLevel
   } from './db/susarEuQueries.js'

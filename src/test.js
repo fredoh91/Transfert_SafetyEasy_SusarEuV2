@@ -1,30 +1,30 @@
 
-  import { 
-    createPoolSusarEu,
-    closePoolSusarEu,
-    createPoolSafetyEasy,
-    closePoolSafetyEasy
-  } from './db/db.js';
+  // import { 
+  //   createPoolSusarEu,
+  //   closePoolSusarEu,
+  //   createPoolSafetyEasy,
+  //   closePoolSafetyEasy
+  // } from './db/db.js';
   
-  import {
-    getSusarBNPV,
-    getMedicBNPV,
-    getEIBNPV,
-    getMedHistBNPV
-  } from './db/safetyEasyQueries.js'
+  // import {
+  //   getSusarBNPV,
+  //   getMedicBNPV,
+  //   getEIBNPV,
+  //   getMedHistBNPV
+  // } from './db/safetyEasyQueries.js'
   
-  import {
-    donne_objSubLowLevel,
-    effaceTablesSUSAR_EU,
-    isSUSAR_EU_unique
-  } from './db/susarEuQueries.js'
+  // import {
+  //   donne_objSubLowLevel,
+  //   effaceTablesSUSAR_EU,
+  //   isSUSAR_EU_unique
+  // } from './db/susarEuQueries.js'
 
 
-  import {
-    sauvegardeObjet,
-    chargementObjet,
-    chargeObjBNPV_fromJSON
-  } from './JSON_Save.js'
+  // import {
+  //   sauvegardeObjet,
+  //   chargementObjet,
+  //   chargeObjBNPV_fromJSON
+  // } from './JSON_Save.js'
 
 
 
@@ -65,17 +65,40 @@
 //   console.log("startDate",startDate)
 //   console.log("endDate",endDate)
 
-let dateDebut = new Date('2024-02-01')
-let nbJour = 30
-for (let i = 0; i < nbJour; i++) {
+// let dateDebut = new Date('2024-02-01')
+// let nbJour = 30
+// for (let i = 0; i < nbJour; i++) {
 
-  console.log(dateDebut.toDateString());
-  // console.log(dateDebut.getDate());
+//   console.log(dateDebut.toDateString());
+//   // console.log(dateDebut.getDate());
 
 
-  let jourDapres = new Date(dateDebut);
-  jourDapres.setDate(dateDebut.getDate() + 1);
+//   let jourDapres = new Date(dateDebut);
+//   jourDapres.setDate(dateDebut.getDate() + 1);
   
-  // Utiliser la nouvelle date pour la prochaine itération
-  dateDebut = jourDapres;
+//   // Utiliser la nouvelle date pour la prochaine itération
+//   dateDebut = jourDapres;
+// }
+
+
+const donne_lstSeriousnessCriteria = async (SeriousnessCriteria_brut) => {
+
+  const tabSeriousnessCriteria_brut = SeriousnessCriteria_brut.split("~~")
+  if (tabSeriousnessCriteria_brut.length != 0) {
+    return tabSeriousnessCriteria_brut.reduce ((accumulator,Crit_encourt)=>{
+      if (!accumulator .includes(Crit_encourt)) {
+        return accumulator  + Crit_encourt + '<BR>';
+      }
+      return accumulator ; 
+    },'')
+  } else {
+    return ""
+  }
 }
+
+
+const valEntree = "Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening"
+
+const lstSeriousnessCriteria = await donne_lstSeriousnessCriteria (valEntree)
+
+console.log (lstSeriousnessCriteria)

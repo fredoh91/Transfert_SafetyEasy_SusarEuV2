@@ -248,6 +248,12 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
       if (isUnique) {
 
         iSUSAR_importes++
+
+
+        // gestion des critères de gravité
+        const lstSeriousnessCriteria = await donne_lstSeriousnessCriteria (susar['seriousnesscriteria'])
+
+
         // console.log ("DonneesEtudeBNPV : ",DonneesEtudeBNPV)
         // On récupère les données de l'étude
         const DonneesEtudeFiltre = DonneesEtudeBNPV.filter(DonneesEtude => DonneesEtude.master_id === susar['master_id']);
@@ -298,6 +304,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
                                                   "world_wide_id," +
                                                   "is_case_serious," +
                                                   "seriousness_criteria_brut," +
+                                                  "seriousness_criteria," +
                                                   "patient_sex," +
                                                   "patient_age," +
                                                   "patient_age_unit_label," +
@@ -330,6 +337,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
                                                   "? ," +
                                                   "? ," +
                                                   "? ," +
+                                                  "? ," +
                                                   "CURRENT_TIMESTAMP, " +
                                                   "CURRENT_TIMESTAMP " +
                                           ");" 
@@ -343,7 +351,8 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
           susar['statusdate'], 
           susar['worldwideuniquecaseidentificationnumber'], 
           susar['iscaseserious'], 
-          susar['seriousnesscriteria'], 
+          susar['seriousnesscriteria'],
+          lstSeriousnessCriteria,
           susar['patientsex'], 
           susar['patientonsetage'], 
           susar['patientonsetageunitlabel'], 
@@ -739,7 +748,26 @@ const donne_lstSubLowLevel = async (connectionSusarEu) => {
 
 }
 
-
+/**
+ * Dans la BNPV les critères de gravité sont stockés avec des doublons et séparé par deux tildes ~~
+ * cette methode enlève les doublons et met un saut de ligne HTMH comme séparateur entre deux critères
+ * 
+ * @param {string} SeriousnessCriteria_brut : chaine contenant les criteres de gravité séparés par deux tildes ~~
+ * @returns {Promise<string>} : chaine contenant les critères de gravité sans doublon et séparés par un <BR>
+ */
+const donne_lstSeriousnessCriteria = async (SeriousnessCriteria_brut) => {
+  const tabSeriousnessCriteria_brut = SeriousnessCriteria_brut.split("~~")
+  if (tabSeriousnessCriteria_brut.length != 0) {
+    return tabSeriousnessCriteria_brut.reduce ((accumulator,Crit_encourt)=>{
+      if (!accumulator .includes(Crit_encourt)) {
+        return accumulator  + Crit_encourt + '<BR>';
+      }
+      return accumulator ; 
+    },'')
+  } else {
+    return ""
+  }
+}
 
 export { 
     donne_objSubLowLevel,
