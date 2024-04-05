@@ -12,6 +12,7 @@
     getEIBNPV,
     getMedHistBNPV,
     getDonneesEtudeBNPV,
+    getIndicationBNPV,
     RecupDonneesBNPV
   } from './db/safetyEasyQueries.js'
   
@@ -44,10 +45,10 @@ const currentDir = path.dirname(fileURLToPath(currentUrl));
 const envPath = path.resolve(currentDir, '.', '.env');
 dotenv.config({ path: envPath });
 
-const insertSUSAR_EU = async (poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV) => {
+const insertSUSAR_EU = async (poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV) => {
   const connectionSusarEu = await poolSusarEu.getConnection();
   // await effaceTablesSUSAR_EU (connectionSusarEu)
-  await insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV)
+  await insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV)
   await connectionSusarEu.release();
 }
 
@@ -72,6 +73,7 @@ const main = async () => {
   let EIBNPV
   let MedHistBNPV
   let DonneesEtudeBNPV
+  let IndicationBNPV
 
   if (typeSourceDonnees == "Base") {
 
@@ -81,17 +83,17 @@ const main = async () => {
     connectionSusarEu.release();
     
     // Récupération des données dans Safety Easy
-    [lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV] = await RecupDonneesBNPV(poolSafetyEasy,objSubLowLevel,lstSubLowLevel)
+    [lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV] = await RecupDonneesBNPV(poolSafetyEasy,objSubLowLevel,lstSubLowLevel)
 
   } else if (typeSourceDonnees == "Json") {
     
     // Récupération des données d'origine Safety Easy dans des fichiers JSON 
-    [objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV] = await chargeObjBNPV_fromJSON()
+    [objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV] = await chargeObjBNPV_fromJSON()
 
   }
 
   await closePoolSafetyEasy(poolSafetyEasy)
-  await insertSUSAR_EU(poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV);
+  await insertSUSAR_EU(poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV);
 
   // const effTbSUSAR_EU = await effaceTablesSUSAR_EU(connectionSusarEu)
   // const insTbSUSAR_EU = await insertDataSUSAR_EU(connectionSusarEu)

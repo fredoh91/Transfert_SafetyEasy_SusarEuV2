@@ -84,6 +84,16 @@
  */
 
 /**
+ * @typedef {Object} indication
+ * @property {number} : master_id
+ * @property {string} : productName
+ * @property {string} : productIndication
+ * @property {string} : productIndication_eng
+ * @property {number} : codeProductIndication
+ * @property {string} : productcharacterization
+ */
+
+/**
  * @typedef {Object} donnees_etude
  * @property {number} : master_id
  * @property {number} : caseid

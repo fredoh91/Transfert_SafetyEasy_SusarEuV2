@@ -87,6 +87,8 @@ import {
     const DonneesEtudeBNPV = await getDonneesEtudeBNPV(poolSafetyEasy, lstMasterId);
     // console.log(DonneesEtudeBNPV[0]);
 
+    const IndicationBNPV = await getIndicationBNPV(poolSafetyEasy, lstMasterId);
+    // console.log(DonneesEtudeBNPV[0]);
 // -------------------------------------------------------------------------------
 // --             fin des requetes dans la BNPV           --
 // -------------------------------------------------------------------------------
@@ -98,13 +100,15 @@ import {
     await sauvegardeObjet(EIBNPV,"EIBNPV")
     await sauvegardeObjet(MedHistBNPV,"MedHistBNPV")
     await sauvegardeObjet(DonneesEtudeBNPV,"DonneesEtudeBNPV")
+    await sauvegardeObjet(IndicationBNPV,"IndicationBNPV")
 
     return [
       lstSusarBNPV,
       MedicBNPV,
       EIBNPV,
       MedHistBNPV,
-      DonneesEtudeBNPV
+      DonneesEtudeBNPV,
+      IndicationBNPV
     ]
   };
 
@@ -212,7 +216,7 @@ async function getMedicBNPV(poolSafetyEasy, lstMasterId ) {
                 "WHERE " + 
                     "1 = 1 " + 
                     "AND specificcaseid LIKE 'EC%' " + 
-                    "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
+                    // "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
                     "AND mv.id IN ( " + lstMasterId + ") " + 
                     "AND mv.Deleted = 0; "
     
@@ -305,7 +309,7 @@ async function getEIBNPV(poolSafetyEasy, lstMasterId ) {
  * 
  * @param {Pool} poolSafetyEasy 
  * @param {Array<number>} lstMasterId : tableau des masterId recherchés
- * @returns {Promise<Array<medical_history>>} : un tableau d'objet medical_history 
+ * @returns {Promise<Array<medical_history>>} : un tableau d'objet medical_history
  */
 async function getMedHistBNPV(poolSafetyEasy, lstMasterId ) {
     const connectionSafetyEasy = await poolSafetyEasy.getConnection();
@@ -334,6 +338,37 @@ async function getMedHistBNPV(poolSafetyEasy, lstMasterId ) {
     return  MedHist ;
 }
 
+/**
+ * getIndicationBNPV : récupération des "indications" des SUSARs dans la BNPV
+ * 
+ * @param {Pool} poolSafetyEasy 
+ * @param {Array<number>} lstMasterId : tableau des masterId recherchés
+ * @returns {Promise<Array<indication>>} : un tableau d'objet indication 
+ */
+async function getIndicationBNPV(poolSafetyEasy, lstMasterId ) {
+    const connectionSafetyEasy = await poolSafetyEasy.getConnection();
+    const SQL = "SELECT DISTINCT " +
+                    "pr.master_id, " +
+                    "TRIM(REPLACE(pr.productname, '\\n', '')) productname, " +
+                    "id.productindication, " +
+                    "id.codeproductindication, " +
+                    "pr.productcharacterization " +
+                "FROM master_versions mv " +
+                "INNER JOIN bi_product pr ON mv.id = pr.master_id " +
+                "LEFT JOIN bi_product_indication id ON pr.master_id = id.master_id " +
+                    "AND pr.NBBlock = id.NBBlock " +
+                "WHERE " +
+                    "1 = 1 " +
+                    "AND specificcaseid LIKE 'EC%' " +
+                    "AND mv.id IN ( " + lstMasterId + ") " +
+                    "AND pr.productcharacterization = 'Suspect'"
+
+    const [Indication, champs] = await connectionSafetyEasy.query(SQL);
+    connectionSafetyEasy.release();
+
+    return  Indication ;
+}
+
 
 
 export { 
@@ -342,5 +377,6 @@ export {
     getEIBNPV,
     getMedHistBNPV,
     getDonneesEtudeBNPV,
+    getIndicationBNPV,
     RecupDonneesBNPV
 };

@@ -64,6 +64,7 @@ async function chargeObjBNPV_fromJSON() {
   const EIBNPV_ = chargementObjet("EIBNPV")
   const MedHistBNPV_ = chargementObjet("MedHistBNPV")
   const DonneesEtudeBNPV_ = chargementObjet("DonneesEtudeBNPV")
+  const IndicationBNPV_ = chargementObjet("IndicationBNPV")
 
   const [
     objSubLowLevel, 
@@ -71,14 +72,16 @@ async function chargeObjBNPV_fromJSON() {
     MedicBNPV, 
     EIBNPV, 
     MedHistBNPV, 
-    DonneesEtudeBNPV
+    DonneesEtudeBNPV,
+    IndicationBNPV
   ] = await Promise.all([
                     objSubLowLevel_, 
                     lstSusarBNPV_, 
                     MedicBNPV_, 
                     EIBNPV_, 
                     MedHistBNPV_, 
-                    DonneesEtudeBNPV_
+                    DonneesEtudeBNPV_,
+                    IndicationBNPV_
                   ]);
 
   return [
@@ -87,7 +90,8 @@ async function chargeObjBNPV_fromJSON() {
     MedicBNPV,
     EIBNPV,
     MedHistBNPV,
-    DonneesEtudeBNPV
+    DonneesEtudeBNPV,
+    IndicationBNPV
   ]
 }
 

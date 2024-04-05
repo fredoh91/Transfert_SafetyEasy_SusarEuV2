@@ -216,7 +216,7 @@ async function isUnique_intervenant_substance_dmm_susar_eu (connectionSusarEu,su
  * @param {medical_history[]} MedHistBNPV 
  * @param {donnees_etude[]} DonneesEtudeBNPV 
 */
-async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV) {
+async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV) {
   try {
 
     // récupération de la liste des intervenant_substance_dmm
@@ -252,7 +252,6 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
 
         // gestion des critères de gravité
         const lstSeriousnessCriteria = await donne_lstSeriousnessCriteria (susar['seriousnesscriteria'])
-
 
         // console.log ("DonneesEtudeBNPV : ",DonneesEtudeBNPV)
         // On récupère les données de l'étude
@@ -315,6 +314,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
                                                   "sponsorstudynumb, " +
                                                   "num_eudract, " +
                                                   "pays_etude, " +
+                                                  "date_import, " +
                                                   "created_at," +
                                                   "updated_at " +
                                         ") VALUES (" +
@@ -338,6 +338,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
                                                   "? ," +
                                                   "? ," +
                                                   "? ," +
+                                                  "CURRENT_TIMESTAMP, " +
                                                   "CURRENT_TIMESTAMP, " +
                                                   "CURRENT_TIMESTAMP " +
                                           ");" 
@@ -376,40 +377,42 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
         let tabLibHighLevelSubName = [];
         for (const Medic of MedicsFiltre) {
           
-          // pour charger le high level substance name
-          const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_low_level === Medic['substancename']);
           let highLevelSubName = "" 
           let tabHighLevelSubName = [];
+          if (Medic['productcharacterization'] === 'Suspect' || Medic['productcharacterization'] === 'Interacting') {
 
-          for (const highLevel of objSubHighLevelFiltre) {
-            if (highLevelSubName.indexOf(highLevel['active_substance_high_level']) === -1) {
+            
+            // pour charger le high level substance name
+            const objSubHighLevelFiltre = objSubLowLevel.filter(objSubLowLevel => objSubLowLevel.active_substance_low_level === Medic['substancename']);
 
-              // recherche dans le tableau des eval/SA_high_level : objIntSubDmm
-              
-              const objIntSubDmmFiltre = objIntSubDmm.filter(objIntSubDmm => objIntSubDmm.active_substance_high_level === highLevel['active_substance_high_level']);
+            for (const highLevel of objSubHighLevelFiltre) {
 
-              for (const IntSubDmm of objIntSubDmmFiltre) {
-                // console.log(IntSubDmm['active_substance_high_level'])
-                tabHighLevelSubName.push(IntSubDmm['id'])
-              }
+              if (highLevelSubName.indexOf(highLevel['active_substance_high_level']) === -1) {
+                // recherche dans le tableau des eval/SA_high_level : objIntSubDmm
+                
+                const objIntSubDmmFiltre = objIntSubDmm.filter(objIntSubDmm => objIntSubDmm.active_substance_high_level === highLevel['active_substance_high_level']);
 
-              // console.log (objIntSubDmmFiltre)
-              // process.exit(0)
-              
-              // tableau pour creer les lignes dans la table substance_pt
-              if (tabLibHighLevelSubName.indexOf(highLevel['active_substance_high_level']) === -1) {
-                tabLibHighLevelSubName.push(highLevel['active_substance_high_level'])
-              }
+                for (const IntSubDmm of objIntSubDmmFiltre) {
+                  // console.log(IntSubDmm['active_substance_high_level'])
+                  tabHighLevelSubName.push(IntSubDmm['id'])
+                }
 
-              if (highLevelSubName.length === 0) {
-                highLevelSubName = highLevel['active_substance_high_level'];
-              } else {
-                highLevelSubName += '/' + highLevel['active_substance_high_level'];
+                // console.log (objIntSubDmmFiltre)
+                // process.exit(0)
+                
+                // tableau pour creer les lignes dans la table substance_pt
+                if (tabLibHighLevelSubName.indexOf(highLevel['active_substance_high_level']) === -1) {
+                  tabLibHighLevelSubName.push(highLevel['active_substance_high_level'])
+                }
+
+                if (highLevelSubName.length === 0) {
+                  highLevelSubName = highLevel['active_substance_high_level'];
+                } else {
+                  highLevelSubName += '/' + highLevel['active_substance_high_level'];
+                }
               }
             }
           }
-
-
           
           // for (const highLevel of objSubHighLevelFiltre) {
           //   if (highLevelSubName.length == 0) {
@@ -459,6 +462,8 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
           "CURRENT_TIMESTAMP " +
           ");" 
 
+          // console.log (Medic['productcharacterization'])
+
           const res2 = await connectionSusarEu.query(SQL_insert_medicaments, [
             idSUSAR_EU,
             Medic['master_id'], 
@@ -473,30 +478,43 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
             Medic['NBBlock2']
           ]);
           
-          // Récupération l'ID généré lors de l'INSERT dans la table medicaments : si un jour on décide de relier la table medicament et la table intervenant_substance_dmm
-          // const idmedicaments = res1[0].insertId
 
-          // On boucle sur la variable tabHighLevelSubName qui contient les id de la table intervenant_substance_dmm avec les active_substance_high_level que l'on souhaite
 
-          for (const [idx, idIntSubDmm] of tabHighLevelSubName.entries()) {
-            // console.log(idSUSAR_EU," ",idIntSubDmm)
-            const isUniqueIntSubDmmSusar = await isUnique_intervenant_substance_dmm_susar_eu(connectionSusarEu,idSUSAR_EU,idIntSubDmm)
-            if (isUniqueIntSubDmmSusar) {
-              // INSERT dans la table de liaison susar_eu/intervenant_substance_dmm des ID des deux tables comme clefs étrangères
-              const SQL_insert_intervenant_substance_dmm_susar_eu = "INSERT INTO intervenant_substance_dmm_susar_eu ( " +
-                "susar_eu_id," +
-                "intervenant_substance_dmm_id" +
-                ") VALUES (" +
-                "? ," +
-                "? " +
-                ");"
+
+          if (Medic['productcharacterization'] === 'Suspect' || Medic['productcharacterization'] === 'Interacting') {
+            
+            // Récupération l'ID généré lors de l'INSERT dans la table medicaments : si un jour on décide de relier la table medicament et la table intervenant_substance_dmm
+            // const idmedicaments = res1[0].insertId
   
-              const res2_2 = await connectionSusarEu.query(SQL_insert_intervenant_substance_dmm_susar_eu, [
-                idSUSAR_EU,
-                idIntSubDmm
-              ])
+            // On boucle sur la variable tabHighLevelSubName qui contient les id de la table intervenant_substance_dmm avec les active_substance_high_level que l'on souhaite
+  
+            for (const [idx, idIntSubDmm] of tabHighLevelSubName.entries()) {
+              // console.log(idSUSAR_EU," ",idIntSubDmm)
+              
+              const isUniqueIntSubDmmSusar = await isUnique_intervenant_substance_dmm_susar_eu(connectionSusarEu,idSUSAR_EU,idIntSubDmm)
+              if (isUniqueIntSubDmmSusar) {
+                // INSERT dans la table de liaison susar_eu/intervenant_substance_dmm des ID des deux tables comme clefs étrangères
+                const SQL_insert_intervenant_substance_dmm_susar_eu = "INSERT INTO intervenant_substance_dmm_susar_eu ( " +
+                  "susar_eu_id," +
+                  "intervenant_substance_dmm_id" +
+                  ") VALUES (" +
+                  "? ," +
+                  "? " +
+                  ");"
+    
+                const res2_2 = await connectionSusarEu.query(SQL_insert_intervenant_substance_dmm_susar_eu, [
+                  idSUSAR_EU,
+                  idIntSubDmm
+                ])
+              }
             }
+            
+
           }
+
+
+
+
         }
         
         // console.log(tabLibHighLevelSubName)
@@ -639,6 +657,55 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
           ]);
         }
 
+        // pour charger les "indication"
+        // console.log ("Medical history : ")
+        const IndicationFiltre = IndicationBNPV.filter(IndicationBNPV => IndicationBNPV.master_id === susar['master_id']);
+        for (const Indication of IndicationFiltre) {
+          // if (MedHist['patientmedicalcomment']==='') {
+          //   console.log(MedHist['code_PT'] + " : " + 
+          //               MedHist['lib_PT']
+          //               )
+          // } else {
+          //   console.log(MedHist['code_PT'] + " : " + 
+          //               MedHist['lib_PT'] + " (" +
+          //               MedHist['patientmedicalcomment'] + ")"
+          //               )
+          // }
+
+          // INSERT dans la table effets_indesirables l'ID généré comme clé étrangère
+          const SQL_insert_Indication = "INSERT INTO indications ( " + 
+          "susar_id," +
+          "master_id," +
+          "product_name," +
+          "product_indications," +
+          "product_indications_eng," +
+          "code_product_indications," +
+          "productcharacterization," +
+          "created_at," +
+          "updated_at " +
+          ") VALUES (" +
+          "? ," +
+          "? ," +
+          "? ," +
+          "? ," +
+          "? ," +
+          "? ," +
+          "? ," +
+          "CURRENT_TIMESTAMP, " +
+          "CURRENT_TIMESTAMP " +
+          ");" 
+
+          const res5 = await connectionSusarEu.query(SQL_insert_Indication, [
+            idSUSAR_EU,
+            Indication['master_id'], 
+            Indication['productname'], 
+            Indication['productindication'], 
+            '', 
+            Indication['codeproductindication'],
+            Indication['productcharacterization']
+          ]);
+        }
+
         // on boucle sur les substances - tabLibHighLevelSubName :
         for (const LibHighLevelSubName of tabLibHighLevelSubName) {
 
@@ -694,9 +761,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
               id_substance_pt,
               idSUSAR_EU
             ]);
-
-
-          } 
+          }
         }
 
 
