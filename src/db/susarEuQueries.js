@@ -798,7 +798,7 @@ async function insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,
  * Array<[
  *    active_substance_grouping[], 
  *    String[]
- * ]>>} [objSubLowLevel,lstSubLowLevel] : reourne un tableau :
+ * ]>>} [objSubLowLevel,lstSubLowLevel] : retourne un tableau :
  *            - objSubLowLevel : Objet : contenu du résultat de la requête vers la table high-level/low-level substance name
  *            - lstSubLowLevel : Tableau : liste des low-level substance name
  */
