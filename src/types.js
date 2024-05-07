@@ -10,6 +10,17 @@
  * @property {Date} : created_at
  * @property {Date} : updated_at
  */
+
+/**
+ * @typedef {Object} objIntSubDmm
+ * @property {number} : id_int_sub
+ * @property {number} : id_act_grp
+ * @property {string} : active_substance_high_level
+ * @property {string} : active_substance_low_level
+ * @property {boolean} : association_de_substances
+ * @property {string[]} : ass_tab_LL - tableau d'active_substance_low_level_ass
+ */
+
 /**
  * @typedef {Object} susar_eu
  * @property {number} : master_id

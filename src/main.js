@@ -20,7 +20,8 @@
     donne_objSubLowLevel,
     effaceTablesSUSAR_EU,
     insertDataSUSAR_EU,
-    donne_lstSubLowLevel
+    donne_lstSubLowLevel,
+    // donne_objSubHighLowLevelAss
   } from './db/susarEuQueries.js'
 
 
@@ -60,8 +61,6 @@ const main = async () => {
   const poolSusarEu = await createPoolSusarEu();
   const poolSafetyEasy = await createPoolSafetyEasy();
 
-  // const typeSourceDonnees = "Base"
-  // const typeSourceDonnees = "Json"
   const typeSourceDonnees = process.env.TYPESOURCEDONNEES
 
   logger.debug('Type d\'origine des données : ' + typeSourceDonnees);
@@ -81,7 +80,7 @@ const main = async () => {
     const connectionSusarEu = await poolSusarEu.getConnection();
     [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
     connectionSusarEu.release();
-    
+
     // Récupération des données dans Safety Easy
     [lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV] = await RecupDonneesBNPV(poolSafetyEasy,objSubLowLevel,lstSubLowLevel)
 
@@ -94,9 +93,6 @@ const main = async () => {
 
   await closePoolSafetyEasy(poolSafetyEasy)
   await insertSUSAR_EU(poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV);
-
-  // const effTbSUSAR_EU = await effaceTablesSUSAR_EU(connectionSusarEu)
-  // const insTbSUSAR_EU = await insertDataSUSAR_EU(connectionSusarEu)
 
   await closePoolSusarEu(poolSusarEu)
 

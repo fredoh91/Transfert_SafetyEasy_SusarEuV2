@@ -47,24 +47,24 @@ async function isAlreadyExist_substance_pt (connectionSusarEu,actSub_hl,codePt) 
     }
   }
 
-/**
- * donne_objSubLowLevel : récupération de la table de correspondance high level / low level
- * 
- * @param {Connection} connectionSusarEu 
- * @returns {Promise<Array<[active_substance_grouping[]]>>} retourne une promesse de tableau d'objet active_substance_grouping :
- *            - contenu du résultat de la requête vers la table high-level/low-level substance name
- */
-async function  donne_objSubLowLevel (connectionSusarEu) {
-    const results = await connectionSusarEu.query(
-      "SELECT * FROM active_substance_grouping WHERE active_substance_grouping.inactif = 0 ;"
-    );
-    // console.log(results[0][0])
-    // console.log(results[0])
-    // const lstSubLowLevel = results[0].map(obj => obj.active_substance_high_le_low_level);
-
-    return results[0];
-    // return Promise.resolve(results[0]);
-  }
+  /**
+   * donne_objSubLowLevel : récupération de la table de correspondance high level / low level
+   * 
+   * @param {Connection} connectionSusarEu 
+   * @returns {Promise<Array<[active_substance_grouping[]]>>} retourne une promesse de tableau d'objet active_substance_grouping :
+   *            - contenu du résultat de la requête vers la table high-level/low-level substance name
+   */
+  async function  donne_objSubLowLevel (connectionSusarEu) {
+      const results = await connectionSusarEu.query(
+        "SELECT * FROM active_substance_grouping WHERE active_substance_grouping.inactif = 0 ;"
+      );
+      // console.log(results[0][0])
+      // console.log(results[0])
+      // const lstSubLowLevel = results[0].map(obj => obj.active_substance_high_le_low_level);
+  
+      return results[0];
+      // return Promise.resolve(results[0]);
+    }
 
 
 /**
@@ -838,5 +838,6 @@ export {
     donne_objSubLowLevel,
     effaceTablesSUSAR_EU,
     insertDataSUSAR_EU,
-    donne_lstSubLowLevel
+    donne_lstSubLowLevel,
+    // donne_objSubHighLowLevelAss
 };

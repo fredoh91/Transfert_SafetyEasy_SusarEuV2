@@ -20,9 +20,30 @@ import {
   donne_objSubLowLevel,
   effaceTablesSUSAR_EU,
   insertDataSUSAR_EU,
-  donne_lstSubLowLevel
+  donne_lstSubLowLevel,
+  // donne_objSubHighLowLevelAss
 } from './db/susarEuQueries.js'
 
+
+
+import {
+  donne_objIntSubDmm,
+  getSusarBNPV_v2,
+  donne_lstMasterId,
+  getMedicBNPV_v2,
+  getEIBNPV_v2,
+  getMedHistBNPV_v2,
+  getDonneesEtudeBNPV_v2,
+  getIndicationBNPV_v2,
+  insertDataSUSAR_EU_v2,
+  // pour ces tests, a supprimer ensuite
+  donneObjMed_HL_AssSub_pour_MAJ,
+  donne_medicament_by_master_id,
+  donne_effets_indesirables_by_master_id,
+  isUnique_intervenant_substance_dmm_susar_eu,
+  isAlreadyExist_substance_pt,
+  isAlreadyExist_substance_pt_susar_eu,
+} from './db/susarEuQueries_v2.js'
 
 import {
   sauvegardeObjet,
@@ -41,141 +62,204 @@ const currentDir = path.dirname(fileURLToPath(currentUrl));
 const envPath = path.resolve(currentDir, '.', '.env');
 dotenv.config({ path: envPath });
 
-const insertSUSAR_EU = async (poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV) => {
-  const connectionSusarEu = await poolSusarEu.getConnection();
-  // await effaceTablesSUSAR_EU (connectionSusarEu)
-  // await insertDataSUSAR_EU(connectionSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV)
-  await connectionSusarEu.release();
+
+const trt_HL_SA = async (connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,datePivot = new Date()) => {
+  const master_id = '32091853'
+
+  const lstSubHighLevel = lstObjIntSubDmm.map(tab=>tab.active_substance_high_level)
+                                          .filter((value, index, array) => array.indexOf(value) === index)
+  for (const subHighLevel of lstSubHighLevel) {
+
+
+
+    if(subHighLevel==='PARACETAMOL' || subHighLevel==='THIOCOLCHICOSIDE' || subHighLevel==='TRAMADOL') {
+      // if(subHighLevel==='PARACETAMOL' ) {
+      
+      // console.log (subHighLevel)
+      
+      // lstSubLowLevel est la liste des objIntSubDmm pour le HL en cours.
+      //    On utilisera :
+      //      - lstSubLowLevel[0].active_substance_high_level     : en tant que nom de high level => dans la variable highLevelSubName
+      //      - lstSubLowLevel[0].id_int_sub     : en tant que id de high level => dans la variable id_int_sub
+    // début de la transaction
+      await connectionSusarEu.beginTransaction();
+      const lstSubLowLevel = lstObjIntSubDmm.filter(HL => HL.active_substance_high_level === subHighLevel)
+      
+      const highLevelSubName = lstSubLowLevel[0].active_substance_high_level
+      const id_int_sub = lstSubLowLevel[0].id_int_sub
+
+
+      const assSub = lstSubLowLevel[0].association_de_substances
+
+      // console.log(lstSubLowLevel)
+
+      const tabObjMed = await donne_medicament_by_master_id (connectionSusarEu,master_id)
+      
+      // console.log(tabObjMed)
+      // console.log(tabObjEI)
+      
+      let tabObjMed_HL= ""
+      if (lstSubLowLevel[0].association_de_substances) {
+        // association de substance
+        // a faire, c'est compliqué
+        // tabObjMed_HL = tabObjMed.filter(obj =>
+          //   lstSubLowLevel.some(sub => sub.ass_tab_LL === obj.substancename)
+        // );
+      } else {
+        // pas d'association de substance
+        tabObjMed_HL = tabObjMed.filter(obj =>
+          lstSubLowLevel.some(sub => sub.active_substance_low_level === obj.substancename)
+        );
+      }
+      // tabObjMed_HL est la liste des médicaments dans SUSAR_EU 
+      
+      // console.log(tabObjMed_HL)
+      for (const ObjMed_HL of tabObjMed_HL) {
+        // console.log (ObjMed_HL)
+        // console.log ("medicaments.id : ",ObjMed_HL.id)
+        // il faut faire une fonction pour mettre a jour la table medicament pour tous les objets tabObjMed_HL, en utilisant tabObjMed_HL.id
+        // const MAJ_medicament = await MAJ_medicament_by_master_id (connectionSusarEu,ObjMed_HL.id,highLevelSubName,id_int_sub,assSub)
+        const idSUSAR_EU = ObjMed_HL.susar_id;
+        const SQL_medicament = `UPDATE medicaments
+        SET medicaments.active_substance_high_level = ?,
+        medicaments.intervenant_substance_dmm_id = ?,
+            medicaments.association_de_substances = ?,
+            medicaments.updated_at = CURRENT_TIMESTAMP
+            WHERE medicaments.id = ${ObjMed_HL.id};`
+
+            const res_upt_medicament = await connectionSusarEu.query(SQL_medicament, [highLevelSubName,id_int_sub,assSub])
+
+            if(res_upt_medicament[0].affectedRows > 0) {
+              
+              if (id_int_sub !== null) {
+                
+                const isUniqueIntSubDmmSusar = await isUnique_intervenant_substance_dmm_susar_eu(connectionSusarEu,idSUSAR_EU,id_int_sub)
+                if (isUniqueIntSubDmmSusar) {
+                  // INSERT dans la table de liaison susar_eu/intervenant_substance_dmm des ID des deux tables comme clefs étrangères
+                  const SQL_insert_intervenant_substance_dmm_susar_eu = "INSERT INTO intervenant_substance_dmm_susar_eu ( " +
+                  "susar_eu_id," +
+                  "intervenant_substance_dmm_id" +
+                  ") VALUES (" +
+                  "? ," +
+                  "? " +
+                  ");"
+                  
+                  const res2_2 = await connectionSusarEu.query(SQL_insert_intervenant_substance_dmm_susar_eu, [
+                    idSUSAR_EU,
+                    id_int_sub
+                  ])
+            }
+          }
+          
+          // la MAJ a fonctionné => Il faut regarder que pour chaque objet de tabObjEI, on a bien un couple medicament/substance dans la table substance_pt :
+          // sinon on crée la ligne dans cette table "substance_pt" et on ajoute une entrée dans la table de liaison substance_pt_susar_eu
+          const tabMeddraPt = await donne_effets_indesirables_by_master_id (connectionSusarEu,master_id)
+          
+          // on boucle sur les EI_PT - tabMeddraPt (codereactionmeddrapt,reactionmeddrapt)
+          for (const MeddraPt of tabMeddraPt) {
+
+            // requete dans la table substance_pt pour voir si le couple substance/CodePT n'existe pas déja 
+            const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,highLevelSubName,MeddraPt.codereactionmeddrapt)
+            let id_substance_pt = null
+            if (id_substance_pt_2 != null) {
+              id_substance_pt = id_substance_pt_2
+              //      - si OUI : - on récupère substance_pt.id
+              //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+              //                    - susar_eu_id = idSUSAR_EU
+              //                    - substance_pt_id = substance_pt.id
+            } else {
+              //      - si NON : - on crée une ligne dans substance_pt.id
+              //                 - on récupère substance_pt.id ainsi crée
+              //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+              //                    - susar_eu_id = idSUSAR_EU
+              //                    - substance_pt_id = substance_pt.id
+              const SQL_insert_substance_pt = "INSERT INTO substance_pt ( " + 
+                        "active_substance_high_level," +
+                        "codereactionmeddrapt," +
+                        "reactionmeddrapt," +
+                        "created_at," +
+                        "updated_at " +
+                        ") VALUES (" +
+                        "? ," +
+                        "? ," +
+                        "? ," +
+                        "CURRENT_TIMESTAMP, " +
+                        "CURRENT_TIMESTAMP " +
+                        ");"
+              const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
+                highLevelSubName,
+                MeddraPt.codereactionmeddrapt, 
+                MeddraPt.reactionmeddrapt
+              ]);
+              id_substance_pt = res_insert_substance_pt[0].insertId;
+            }
+
+            const Exist_substance_pt_susar_eu = await isAlreadyExist_substance_pt_susar_eu (connectionSusarEu,id_substance_pt,idSUSAR_EU)
+            // console.log (Exist_substance_pt_susar_eu)
+
+            if (Exist_substance_pt_susar_eu === null ) {
+              const SQL_insert_substance_pt_susar_eu = "INSERT INTO substance_pt_susar_eu ( " + 
+                        "substance_pt_id," +
+                        "susar_eu_id" +
+                        ") VALUES (" +
+                        "? ," +
+                        "? " +
+                        ");"
+              const res_insert_substance_pt_susar_eu = await connectionSusarEu.query(SQL_insert_substance_pt_susar_eu, [
+                id_substance_pt,
+                idSUSAR_EU
+              ]);
+            }
+          }
+
+
+
+        }
+        // console.log (MAJ_medicament)
+      }
+
+      await connectionSusarEu.commit();
+
+    }
+
+  }
 }
 
 
-  // const poolSusarEu = await createPoolSusarEu();
-  // const connectionSusarEu = await poolSusarEu.getConnection();
-  // // await effaceTablesSUSAR_EU (connectionSusarEu)
-  // let a = await isSUSAR_EU_unique (connectionSusarEu,31719194,'EC2024015186',4)
-  // console.log(a)
-  // let b = await isSUSAR_EU_unique (connectionSusarEu,31719194,'EC2024015187',4)
-  // console.log(b)
-  // let c = await isSUSAR_EU_unique (connectionSusarEu,31719194,'EC2024015186',6)
-  // console.log(c)
-  // let d = await isSUSAR_EU_unique (connectionSusarEu,31719191,'EC2024015186',4)
-  // console.log(d)
-  // let e = await isSUSAR_EU_unique (connectionSusarEu,31719191,'EC2024015187',4)
-  // console.log(e)
-  // connectionSusarEu.release();
-  // await closePoolSusarEu(poolSusarEu)
 
-// const datePivotStatus = new Date()
-// const NbJourAvant = 3
-// const NbJourApres = 1
-
-// const jourAvant = new Date(datePivotStatus - NbJourAvant * 24 * 60 * 60 * 1000);
-// const jourApres = new Date(datePivotStatus + NbJourApres * 24 * 60 * 60 * 1000);
-// const startDate = jourAvant.toISOString().slice(0, 10) + " 00:00:00"
-// const endDate = jourApres.toISOString().slice(0, 10) + " 23:59:59"
-
-
-//   // const today = new Date();
-//   // const threeDaysAgo = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
-//   // const threeDaysFromNow = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
-//   // const startDate = threeDaysAgo.toISOString().slice(0, 19).replace('T', ' ');
-//   // const endDate = threeDaysFromNow.toISOString().slice(0, 19).replace('T', ' ');
-//   // console.log("today",today)
-//   // console.log("threeDaysAgo",threeDaysAgo)
-//   // console.log("threeDaysFromNow",threeDaysFromNow)
-//   console.log("startDate",startDate)
-//   console.log("endDate",endDate)
-
-// let dateDebut = new Date('2024-02-01')
-// let nbJour = 30
-// for (let i = 0; i < nbJour; i++) {
-
-//   console.log(dateDebut.toDateString());
-//   // console.log(dateDebut.getDate());
-
-
-//   let jourDapres = new Date(dateDebut);
-//   jourDapres.setDate(dateDebut.getDate() + 1);
-  
-//   // Utiliser la nouvelle date pour la prochaine itération
-//   dateDebut = jourDapres;
-// }
-
-
-// const donne_lstSeriousnessCriteria = async (SeriousnessCriteria_brut) => {
-
-//   const tabSeriousnessCriteria_brut = SeriousnessCriteria_brut.split("~~")
-//   if (tabSeriousnessCriteria_brut.length != 0) {
-//     return tabSeriousnessCriteria_brut.reduce ((accumulator,Crit_encourt)=>{
-//       if (!accumulator .includes(Crit_encourt)) {
-//         return accumulator  + Crit_encourt + '<BR>';
-//       }
-//       return accumulator ; 
-//     },'')
-//   } else {
-//     return ""
-//   }
-// }
-
-
-// const valEntree = "Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening~~Death~~Life Threatening"
-
-// const lstSeriousnessCriteria = await donne_lstSeriousnessCriteria (valEntree)
-
-// console.log (lstSeriousnessCriteria)
 const test = async () => {
-
-  // traitement principal
-  // logger.info('Début import : Safety Easy => SUSAR_EU_v2');
 
   const poolSusarEu = await createPoolSusarEu();
   const poolSafetyEasy = await createPoolSafetyEasy();
 
-  // const typeSourceDonnees = "Base"
-  // const typeSourceDonnees = "Json"
+
   const typeSourceDonnees = process.env.TYPESOURCEDONNEES
 
-  // logger.debug('Type d\'origine des données : ' + typeSourceDonnees);
+  const connectionSusarEu = await poolSusarEu.getConnection();
+  const connectionSafetyEasy = await poolSafetyEasy.getConnection();
+  
+  // Création du tableau d'objet avec les substances a importer
 
-  let objSubLowLevel
-  let lstSubLowLevel
-  let lstSusarBNPV
-  let MedicBNPV
-  let EIBNPV
-  let MedHistBNPV
-  let DonneesEtudeBNPV
-  let IndicationBNPV
+  // const lstObjIntSubDmm = await donne_objIntSubDmm(connectionSusarEu);
+  // const lstObjMedSUSAR_EU = await donne_medicament_by_master_id(connectionSusarEu,'32116960');
+  // await sauvegardeObjet(lstObjIntSubDmm,"lstObjIntSubDmm")
+  // await sauvegardeObjet(lstObjMedSUSAR_EU,"lstObjMedSUSAR_EU")
+  // await trt_HL_SA(connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm)
 
-  if (typeSourceDonnees == "Base") {
 
-    // Récupération de la liste des low-level substance name dans SUSAR_EU
-    const connectionSusarEu = await poolSusarEu.getConnection();
-    [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
-    connectionSusarEu.release();
-    
-    console.log("objSubLowLevel : ", objSubLowLevel)
+  const lstObjIntSubDmm = await chargementObjet("lstObjIntSubDmm_test");
+  const lstObjMedSUSAR_EU = await chargementObjet("lstObjMedSUSAR_EU_test");
 
-    console.log("lstSubLowLevel : ",lstSubLowLevel)
-    process.exit(0)
 
-    // Récupération des données dans Safety Easy
-    // [lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV] = await RecupDonneesBNPV(poolSafetyEasy,objSubLowLevel,lstSubLowLevel)
+  const tabObjMed_HL = await donneObjMed_HL_AssSub_pour_MAJ (lstObjMedSUSAR_EU,lstObjIntSubDmm[0].ass_tab_LL)
 
-  } else if (typeSourceDonnees == "Json") {
-    
-    // Récupération des données d'origine Safety Easy dans des fichiers JSON 
-    [objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV] = await chargeObjBNPV_fromJSON()
 
-  }
+  console.log(tabObjMed_HL)
 
   await closePoolSafetyEasy(poolSafetyEasy)
-  // await insertSUSAR_EU(poolSusarEu,objSubLowLevel,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV);
-
 
 
   await closePoolSusarEu(poolSusarEu)
-
-  // logger.info('Fin import : Safety Easy => SUSAR_EU_v2');
 
 }
 

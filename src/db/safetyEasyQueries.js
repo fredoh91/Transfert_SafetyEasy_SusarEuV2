@@ -114,11 +114,113 @@ import {
 
 
 
+
+  /**
+   * 
+   * @param {Pool} poolSafetyEasy 
+   * @param {Array<[active_substance_grouping[]]} objSubHighLowLevelAss 
+   * @param {Array<string>} lstSubLowLevel : tableau des low-level substance name suivis par la France
+   * @returns {Promise
+  *            <Array
+  *                <Array<susar_eu>>
+  *                <Array<medicaments>>
+  *                <Array<effets_indesirables>>
+  *                <Array<medical_history>>
+  *                <Array<donnees_etude>>
+  * >}
+  */
+ const RecupDonneesBNPV_v2 = async (poolSafetyEasy,objSubHighLowLevelAss,lstSubLowLevel,datePivot = new Date()) => {
+
+
+// 1/ on crée un tableau sur les high levels avec un .map()
+// 2/ on boucle sur ce tableau, pour ainsi déterminer les différents cas :
+//      - pas de id_act_grp 
+//          => on ne peut rien importer
+//      - on a un id_act_grp et association_de_substances = FALSE 
+//          => on recupère dans la BNPV les master_id des cas selon active_substance_low_level
+//      - pas de id_act_grp et association_de_substances = TRUE
+//          => on recupère dans la BNPV les master_id des cas selon active_substance_low_level_ass
+
+
+
+// // ------------------------------------------------------------------------------------------------------
+// // --      début de la requete dans SUSAR_EU pour récupérer la liste des low-level substance name      --
+// // ------------------------------------------------------------------------------------------------------
+//     const connectionSusarEu = await poolSusarEu.getConnection();
+
+//     const [objSubLowLevel,lstSubLowLevel] = await donne_lstSubLowLevel(connectionSusarEu)
+//     // console.log(objSubLowLevel)
+//     // console.log(lstSubLowLevel)
+   
+//     connectionSusarEu.release();
+// // ---------------------------------------------------------------------------------------------------
+// // --      fin des requetes dans SUSAR_EU pour récupérer la liste des low-level substance name      --
+// // ---------------------------------------------------------------------------------------------------
+   /**
+    * 
+    * @param {Array<susar_eu>} LstSusarBNPV 
+    * @returns {Promise<Array<number>>}
+    */
+   const donne_lstMasterId = async (LstSusarBNPV) => {
+     return LstSusarBNPV.map(obj => obj.master_id)
+   }
+   
+// -------------------------------------------------------------------------------
+// --             début des requetes dans la BNPV           --
+// -------------------------------------------------------------------------------
+   logger.debug('Import de la date : ' + datePivot);
+// const lstSusarBNPV = await getSusarBNPV(poolSafetyEasy, lstSubLowLevel, new Date(),5,1)
+   const lstSusarBNPV = await getSusarBNPV(poolSafetyEasy, lstSubLowLevel, datePivot, 3 ,1)
+   // console.log(lstSusarBNPV[0])
+   logger.debug('La fonction getSusarBNPV() a retourné le nombre suivant de SUSAR à traiter : ' + lstSusarBNPV.length);
+
+   const lstMasterId = await donne_lstMasterId (lstSusarBNPV)
+   // console.log(lstMasterId)
+
+   const MedicBNPV = await getMedicBNPV(poolSafetyEasy, lstMasterId);
+   // console.log(MedicBNPV[0]);
+
+   const EIBNPV = await getEIBNPV(poolSafetyEasy, lstMasterId);
+   // console.log(EIBNPV[0]);
+
+   const MedHistBNPV = await getMedHistBNPV(poolSafetyEasy, lstMasterId);
+   // console.log(MedHistBNPV[0]);
+
+   const DonneesEtudeBNPV = await getDonneesEtudeBNPV(poolSafetyEasy, lstMasterId);
+   // console.log(DonneesEtudeBNPV[0]);
+
+   const IndicationBNPV = await getIndicationBNPV(poolSafetyEasy, lstMasterId);
+   // console.log(DonneesEtudeBNPV[0]);
+// -------------------------------------------------------------------------------
+// --             fin des requetes dans la BNPV           --
+// -------------------------------------------------------------------------------
+
+// sauvegarde des objets dans des fichiers JSON, pour éviter les multiples requêtes dans la BNPV durant les DEV
+   await sauvegardeObjet(objSubLowLevel,"objSubLowLevel")
+   await sauvegardeObjet(lstSusarBNPV,"lstSusarBNPV")
+   await sauvegardeObjet(MedicBNPV,"MedicBNPV")
+   await sauvegardeObjet(EIBNPV,"EIBNPV")
+   await sauvegardeObjet(MedHistBNPV,"MedHistBNPV")
+   await sauvegardeObjet(DonneesEtudeBNPV,"DonneesEtudeBNPV")
+   await sauvegardeObjet(IndicationBNPV,"IndicationBNPV")
+
+   return [
+     lstSusarBNPV,
+     MedicBNPV,
+     EIBNPV,
+     MedHistBNPV,
+     DonneesEtudeBNPV,
+     IndicationBNPV
+   ]
+ };
+
+
+
 /**
  * getSusarBNPV : récupération des SUSARs dans la BNPV
  * 
  * @param {Pool} poolSafetyEasy 
- * @param {Array.<string>} lstSubLowLevel : tableau des low-level substance name suivis par la France
+ * @param {Array<string>} lstSubLowLevel : tableau des low-level substance name suivis par la France
  * @param {Date} datePivotStatus : date pivot pour calculer le "statusDate between ...
  * @param {number} NbJourAvant : nombre de jour à retrancher à la date pivot pour calculer le "statusDate between ...
  * @param {number} NbJourApres : nombre de jour à ajouter à la date pivot pour calculer le "statusDate between ... 
