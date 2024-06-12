@@ -4,7 +4,9 @@ import {
   logger
 } from '../logs_config.js'
 
-
+import {
+  donneNiveauPriorisation,
+} from '../priorisation.js'
 
 
 /**
@@ -411,7 +413,7 @@ async function getIndicationBNPV_v2(connectionSafetyEasy, lstMasterId ) {
  * @param {medical_history[]} MedHistBNPV 
  * @param {donnees_etude[]} DonneesEtudeBNPV 
 */
-async function insertDataSUSAR_EU_v2(connectionSusarEu,lstObjIntSubDmm,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV) {
+async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV) {
   try {
 
     // récupération de la liste des intervenant_substance_dmm
@@ -448,6 +450,8 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,lstObjIntSubDmm,lstSusarB
 
         iSUSAR_importes++
 
+        // Niveau de priorisation
+        const NivPrio = await donneNiveauPriorisation (connectionSusarEu,connectionSafetyEasy,susar,EIBNPV)
 
         // gestion des critères de gravité
         const lstSeriousnessCriteria = await donne_lstSeriousnessCriteria (susar['seriousnesscriteria'])
@@ -513,10 +517,12 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,lstObjIntSubDmm,lstSusarB
                                                   "sponsorstudynumb, " +
                                                   "num_eudract, " +
                                                   "pays_etude, " +
+                                                  "priorisation, " +
                                                   "date_import, " +
                                                   "created_at," +
                                                   "updated_at " +
                                         ") VALUES (" +
+                                                  "? ," +
                                                   "? ," +
                                                   "? ," +
                                                   "? ," +
@@ -562,7 +568,8 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,lstObjIntSubDmm,lstSusarB
           studytitle,
           sponsorstudynumb,
           num_eudract,
-          pays_etude
+          pays_etude,
+          NivPrio
         ]);
         // console.log(res1)
         // Récupération l'ID généré lors de l'INSERT dans la table susar_eu

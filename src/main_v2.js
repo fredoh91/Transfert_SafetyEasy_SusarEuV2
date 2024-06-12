@@ -102,7 +102,7 @@ const trt_LL_SA = async (connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,
       // console.log(DonneesEtudeBNPV[0]);
   
       // AWAIT : On envoi tous ces tableaux BNPV a une fonction susar_eu qui va créer les données dans les tables
-      await insertDataSUSAR_EU_v2(connectionSusarEu,lstObjIntSubDmm,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV)
+      await insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,lstSusarBNPV,MedicBNPV,EIBNPV,MedHistBNPV,DonneesEtudeBNPV,IndicationBNPV)
 
     }
 }
