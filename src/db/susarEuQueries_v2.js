@@ -598,7 +598,8 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
 
             lstObjIntSubDmm.forEach(obj => {
               for (let i = 0; i < obj.ass_tab_LL.length; i++) {
-                if (obj.ass_tab_LL[i] === Medic['substancename']) {
+                // if (obj.ass_tab_LL[i] === Medic['substancename']) {
+                if (obj.ass_tab_LL[i].toLowerCase() === Medic['substancename'].toLowerCase()) {
                   subExiste = true;
                   break;
                 }
@@ -617,7 +618,8 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
           } else {
             assSub = false
             // ce n'est pas une association de substance - on regarde dans lstObjIntSubDmm.active_substance_low_level
-            if (lstObjIntSubDmm.some(obj => obj.active_substance_low_level === Medic['substancename'])) {
+            // if (lstObjIntSubDmm.some(obj => obj.active_substance_low_level === Medic['substancename'])) {
+            if (lstObjIntSubDmm.some(obj => obj.active_substance_low_level.toLowerCase() === Medic['substancename'].toLowerCase())) {
               // Le 'substancename' du Medic en cours est présent dans la liste des Low Level, pour ce médicament, 
               // on va donc enregistrer le High Level correspondant en definissant la variable "highLevelSubName"
               highLevelSubName_PourInsert = highLevelSubName  
@@ -998,7 +1000,8 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
         } else {
           // pas d'association de substance
           tabObjMed_HL = tabObjMed.filter(obj =>
-            lstObjIntSubDmm.some(sub => sub.active_substance_low_level === obj.substancename)
+            // lstObjIntSubDmm.some(sub => sub.active_substance_low_level === obj.substancename)
+            lstObjIntSubDmm.some(sub => sub.active_substance_low_level.toLowerCase() === obj.substancename.toLowerCase())
           );
         }
         // tabObjMed_HL est la liste des médicaments dans SUSAR_EU 
@@ -1184,8 +1187,10 @@ async function isAlreadyExist_substance_pt (connectionSusarEu,actSub_hl,codePt) 
                                     "sp.active_substance_high_level, " +
                                     "sp.codereactionmeddrapt " +
                               "FROM substance_pt sp " + 
-                              "WHERE sp.active_substance_high_level = ? " +
-                                "AND sp.codereactionmeddrapt = ? ;"
+                              // "WHERE sp.active_substance_high_level = ? " +
+                              //   "AND sp.codereactionmeddrapt = ? ;"
+                              "WHERE LOWER(sp.active_substance_high_level) = LOWER(?) " +
+                              "AND LOWER(sp.codereactionmeddrapt) = LOWER(?);"
   const results = await connectionSusarEu.query(SQL_isAlreadyExist, [
                                                   actSub_hl,
                                                   codePt
@@ -1294,7 +1299,8 @@ async function donneObjMed_HL_AssSub_pour_MAJ (tabObjMed,ass_tab_LL) {
     if (ass_tab_LL.includes(medic.substancename)) {
 
       const PN_ass = medic.productname
-      const tabObjMedFiltrePN = tabObjMed.filter(tabObjMed => tabObjMed.productname === PN_ass)
+      // const tabObjMedFiltrePN = tabObjMed.filter(tabObjMed => tabObjMed.productname === PN_ass)
+      const tabObjMedFiltrePN = tabObjMed.filter(tabObjMed => tabObjMed.productname.toLowerCase() === PN_ass.toLowerCase());
 
       if (tabObjMedFiltrePN.length === ass_tab_LL.length) {
         // tabObjMedFiltrePN et ass_tab_LL ont le même nombre d'éléments, c'est un bon début, c'est un premier indice sur le fait qu'on a peut etre a faire a une association de substances
