@@ -109,6 +109,21 @@ const trt_LL_SA = async (connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,
 
 const main = async () => {
 
+  // permet de capturer les erreurs non gérées et de les rediriger dans le fichier de log
+  process.on('uncaughtException', (err) => {
+    logger.error(`Uncaught Exception: ${err.message}`);
+    logger.error(err.stack);
+    process.exit(1);
+  });
+
+  // permet de capturer les promesses rejetées non gérées et de les rediriger dans le fichier de log
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    logger.error(reason.stack);
+    process.exit(1);
+  });
+
+
   // traitement principal
   logger.info('Début import : Safety Easy => SUSAR_EU_v2');
 

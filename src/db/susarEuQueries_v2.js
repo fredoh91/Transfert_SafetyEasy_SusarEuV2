@@ -70,6 +70,38 @@ async function isUnique_SUSAR_EU (connectionSusarEu,master_id,specificcaseid,DLP
 }
 
 
+// async function isUnique_substance_pt (connectionSusarEu,master_id,specificcaseid,DLPVersion) {
+//   const SQL_master_id_unique = `SELECT 
+//                                   COUNT(susar_eu.id) AS nb
+//                                 FROM
+//                                   susar_eu
+//                                 WHERE
+//                                   susar_eu.master_id = ${master_id};`
+//   const SQL_specificcaseid_DLPVersion_unique = `SELECT
+//                                                   COUNT(susar_eu.id) AS nb
+//                                                 FROM
+//                                                   susar_eu
+//                                                 WHERE
+//                                                   susar_eu.specificcaseid = '${specificcaseid}'
+//                                                   AND susar_eu.dlpversion = 	${DLPVersion}
+//                                                   ;`
+//   try {
+//     const res_1 = connectionSusarEu.query(SQL_master_id_unique);
+//     const res_2 = connectionSusarEu.query(SQL_specificcaseid_DLPVersion_unique);
+//     const [resu_1, resu_2] = await Promise.all([res_1, res_2]);
+
+//     if(resu_1[0][0]['nb'] === 0 && resu_2[0][0]['nb'] === 0 ) { 
+//       return true
+//     } else {
+//       return false
+//     }
+//   } catch (err) {
+//     console.error(erreur);
+//   } finally {
+//     // await closePoolSusarEu(poolSusarEu)
+//   }
+// }
+
 
 
 /**
@@ -619,15 +651,23 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
             assSub = false
             // ce n'est pas une association de substance - on regarde dans lstObjIntSubDmm.active_substance_low_level
             // if (lstObjIntSubDmm.some(obj => obj.active_substance_low_level === Medic['substancename'])) {
-            if (lstObjIntSubDmm.some(obj => obj.active_substance_low_level.toLowerCase() === Medic['substancename'].toLowerCase())) {
-              // Le 'substancename' du Medic en cours est présent dans la liste des Low Level, pour ce médicament, 
-              // on va donc enregistrer le High Level correspondant en definissant la variable "highLevelSubName"
-              highLevelSubName_PourInsert = highLevelSubName  
-              id_int_sub_PourInsert = id_int_sub
+
+            if (Medic['substancename'] !== null) {
+              
+              if (lstObjIntSubDmm.some(obj => obj.active_substance_low_level.toLowerCase() === Medic['substancename'].toLowerCase())) {
+                // Le 'substancename' du Medic en cours est présent dans la liste des Low Level, pour ce médicament, 
+                // on va donc enregistrer le High Level correspondant en definissant la variable "highLevelSubName"
+                highLevelSubName_PourInsert = highLevelSubName  
+                id_int_sub_PourInsert = id_int_sub
+              } else {
+                // On n'est pas rapporteur sur ce medic => on ne stock pas le High Level
+                highLevelSubName_PourInsert = null  
+                id_int_sub_PourInsert = null
+              }
             } else {
-              // On n'est pas rapporteur sur ce medic => on ne stock pas le High Level
-              highLevelSubName_PourInsert = null  
-              id_int_sub_PourInsert = null
+              // Medic['substancename'] est null
+                highLevelSubName_PourInsert = null  
+                id_int_sub_PourInsert = null
             }
           }
 
@@ -915,63 +955,88 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
         }
 
         // on boucle sur les substances - tabLibHighLevelSubName :
-        // for (const LibHighLevelSubName of tabLibHighLevelSubName) {
-
-          
-          // on boucle sur les EI_PT - tabMeddraPt (codereactionmeddrapt,reactionmeddrapt)
-          for (const MeddraPt of tabMeddraPt) {
-
-            // console.log (LibHighLevelSubName,MeddraPt.codereactionmeddrapt)
-            
-            // requete dans la table substance_pt pour voir si le couple substance/CodePT n'existe pas déja 
-            const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,highLevelSubName,MeddraPt.codereactionmeddrapt)
-            let id_substance_pt = null
-            if (id_substance_pt_2 != null) {
-              id_substance_pt = id_substance_pt_2
-              //      - si OUI : - on récupère substance_pt.id
-              //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
-              //                    - susar_eu_id = idSUSAR_EU
-              //                    - substance_pt_id = substance_pt.id
-            } else {
-              //      - si NON : - on crée une ligne dans substance_pt.id
-              //                 - on récupère substance_pt.id ainsi crée
-              //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
-              //                    - susar_eu_id = idSUSAR_EU
-              //                    - substance_pt_id = substance_pt.id
-              const SQL_insert_substance_pt = "INSERT INTO substance_pt ( " + 
-                        "active_substance_high_level," +
-                        "codereactionmeddrapt," +
-                        "reactionmeddrapt," +
-                        "created_at," +
-                        "updated_at " +
-                        ") VALUES (" +
-                        "? ," +
-                        "? ," +
-                        "? ," +
-                        "CURRENT_TIMESTAMP, " +
-                        "CURRENT_TIMESTAMP " +
-                        ");"
-              const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
-                highLevelSubName,
-                MeddraPt.codereactionmeddrapt, 
-                MeddraPt.reactionmeddrapt
-              ]);
-              id_substance_pt = res_insert_substance_pt[0].insertId;
+        for (const Medic of MedicsFiltre) {
+          //////////////////////////////////////////////////////////////////////////////////// TODO
+          // On teste si Medic['substancename'] n'est pas null
+          // if (Medic['substancename'] != null) {
+          // if (Medic['substancename'] !== undefined && Medic['substancename'] !== null && Medic['substancename'] !== '') {
+          if (Medic['substancename']) {
+            // const SubName_PourInsert = Medic['substancename']
+            // Il faut regarder qu'il s'agit bien d'un médicament suspect
+            if (Medic['productcharacterization'] === 'Suspect' || Medic['productcharacterization'] === 'Interacting') {
+            // console.log(Medic['productcharacterization'])
+              // on boucle sur les EI_PT - tabMeddraPt (codereactionmeddrapt,reactionmeddrapt)
+              for (const MeddraPt of tabMeddraPt) {
+                // console.log (LibHighLevelSubName,MeddraPt.codereactionmeddrapt)
+                
+                // requete dans la table substance_pt pour voir si le couple substance/CodePT n'existe pas déja 
+                // const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,highLevelSubName,MeddraPt.codereactionmeddrapt)
+                const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,Medic['substancename'],MeddraPt.codereactionmeddrapt)
+    
+                let id_substance_pt = null
+                if (id_substance_pt_2 != null) {
+                  id_substance_pt = id_substance_pt_2
+                  //      - si OUI : - on récupère substance_pt.id
+                  //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+                  //                    - susar_eu_id = idSUSAR_EU
+                  //                    - substance_pt_id = substance_pt.id
+                } else {
+                  //      - si NON : - on crée une ligne dans substance_pt.id
+                  //                 - on récupère substance_pt.id ainsi crée
+                  //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+                  //                    - susar_eu_id = idSUSAR_EU
+                  //                    - substance_pt_id = substance_pt.id
+                  const SQL_insert_substance_pt = "INSERT INTO substance_pt ( " + 
+                            "active_substance_high_level," +
+                            "codereactionmeddrapt," +
+                            "reactionmeddrapt," +
+                            "created_at," +
+                            "updated_at " +
+                            ") VALUES (" +
+                            "? ," +
+                            "? ," +
+                            "? ," +
+                            "CURRENT_TIMESTAMP, " +
+                            "CURRENT_TIMESTAMP " +
+                            ");"
+                  // const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
+                  //   highLevelSubName,
+                  //   MeddraPt.codereactionmeddrapt, 
+                  //   MeddraPt.reactionmeddrapt
+                  // ]);
+                  const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
+                    Medic['substancename'],
+                    MeddraPt.codereactionmeddrapt, 
+                    MeddraPt.reactionmeddrapt
+                  ]);
+                  id_substance_pt = res_insert_substance_pt[0].insertId;
+                }
+                const isAlreadyExist_sub_pt_susar_eu = await isAlreadyExist_substance_pt_susar_eu (connectionSusarEu,id_substance_pt,idSUSAR_EU)
+                // console.log(Medic['substancename'], "-" ,
+                //   idSUSAR_EU, "-" ,
+                //   id_substance_pt, "-" ,
+                //   MeddraPt.codereactionmeddrapt, "-" ,
+                //   MeddraPt.reactionmeddrapt, "- pas doublon :" , 
+                //   isAlreadyExist_sub_pt_susar_eu);
+                if (isAlreadyExist_sub_pt_susar_eu === null ) {
+                  const SQL_insert_substance_pt_susar_eu = "INSERT INTO substance_pt_susar_eu ( " + 
+                            "substance_pt_id," +
+                            "susar_eu_id" +
+                            ") VALUES (" +
+                            "? ," +
+                            "? " +
+                            ");"
+                  const res_insert_substance_pt_susar_eu = await connectionSusarEu.query(SQL_insert_substance_pt_susar_eu, [
+                    id_substance_pt,
+                    idSUSAR_EU
+                  ]);
+                } else {
+                  // Ce couple id_substance_pt / idSUSAR_EU existe déjà dans la table substance_pt_susar_eu, on n'insert pas ce couple dans cette table
+                }
+              }
             }
-            
-            const SQL_insert_substance_pt_susar_eu = "INSERT INTO substance_pt_susar_eu ( " + 
-                      "substance_pt_id," +
-                      "susar_eu_id" +
-                      ") VALUES (" +
-                      "? ," +
-                      "? " +
-                      ");"
-            const res_insert_substance_pt_susar_eu = await connectionSusarEu.query(SQL_insert_substance_pt_susar_eu, [
-              id_substance_pt,
-              idSUSAR_EU
-            ]);
           }
-
+        }
         // const res5 = await Promise.all([res2, res3, res4]);
       } else {
 
@@ -999,10 +1064,21 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
           tabObjMed_HL = await donneObjMed_HL_AssSub_pour_MAJ (tabObjMed,lstObjIntSubDmm[0].ass_tab_LL)
         } else {
           // pas d'association de substance
-          tabObjMed_HL = tabObjMed.filter(obj =>
-            // lstObjIntSubDmm.some(sub => sub.active_substance_low_level === obj.substancename)
-            lstObjIntSubDmm.some(sub => sub.active_substance_low_level.toLowerCase() === obj.substancename.toLowerCase())
-          );
+          // tabObjMed_HL = tabObjMed.filter(obj =>
+          //   // lstObjIntSubDmm.some(sub => sub.active_substance_low_level === obj.substancename)
+          //   lstObjIntSubDmm.some(sub => sub.active_substance_low_level.toLowerCase() === obj.substancename.toLowerCase())
+          // );
+          tabObjMed_HL = tabObjMed.filter(obj => {
+            if (obj && obj.substancename) {
+              const lowercaseSubstanceName = obj.substancename.toLowerCase();
+              return lstObjIntSubDmm.some(sub => 
+                sub.active_substance_low_level.toLowerCase() === lowercaseSubstanceName
+              );
+            }
+            return false;
+          });
+          
+          
         }
         // tabObjMed_HL est la liste des médicaments dans SUSAR_EU 
         for (const ObjMed_HL of tabObjMed_HL) {
