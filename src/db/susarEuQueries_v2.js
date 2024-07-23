@@ -6,6 +6,9 @@ import {
 
 import {
   donneNiveauPriorisation,
+  isCasEurope,
+  isDME,
+  isIME,
 } from '../priorisation.js'
 
 
@@ -485,6 +488,14 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
         // Niveau de priorisation
         const NivPrio = await donneNiveauPriorisation (connectionSusarEu,connectionSafetyEasy,susar,EIBNPV)
 
+        const resIsCasEurope = await isCasEurope(connectionSusarEu,susar['pays_survenue'])
+
+        const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
+
+        const resIsDME = await isDME(connectionSusarEu,EIFiltre)
+
+        const resIsIME = await isIME(connectionSusarEu,EIFiltre)
+
         // gestion des critères de gravité
         const lstSeriousnessCriteria = await donne_lstSeriousnessCriteria (susar['seriousnesscriteria'])
 
@@ -550,10 +561,16 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
                                                   "num_eudract, " +
                                                   "pays_etude, " +
                                                   "priorisation, " +
+                                                  "cas_ime, " +
+                                                  "cas_dme, " +
+                                                  "cas_europe, " +
                                                   "date_import, " +
                                                   "created_at," +
                                                   "updated_at " +
                                         ") VALUES (" +
+                                                  "? ," +
+                                                  "? ," +
+                                                  "? ," +
                                                   "? ," +
                                                   "? ," +
                                                   "? ," +
@@ -601,7 +618,10 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
           sponsorstudynumb,
           num_eudract,
           pays_etude,
-          NivPrio
+          NivPrio,
+          resIsIME,
+          resIsDME,
+          resIsCasEurope
         ]);
         // console.log(res1)
         // Récupération l'ID généré lors de l'INSERT dans la table susar_eu
@@ -769,7 +789,7 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
 
         // pour charger les effets indesirables
         // console.log ("Effets indesirables : ")
-        const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
+        // const EIFiltre = EIBNPV.filter(EI => EI.master_id === susar['master_id']);
 
         let tabMeddraPt = []; 
 
