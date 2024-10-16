@@ -72,7 +72,16 @@ const trt_LL_SA = async (connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,
                                           .filter((value, index, self) => self.indexOf(value) === index)
     const lstSubLowLevel = lstObjIntSubDmm.map(obj => obj.active_substance_low_level)
 
-    const lstSusarBNPV = await getSusarBNPV_v2(connectionSafetyEasy, lstSubLowLevel, datePivot, 3 ,1)
+    // const lstSusarBNPV = await getSusarBNPV_v2(connectionSafetyEasy, lstSubLowLevel, datePivot, 3 ,1, assSub)
+
+    const nbJourApres = process.env.DATE_PIVOT_NB_JOUR_APRES
+    const nbJourAvant = process.env.DATE_PIVOT_NB_JOUR_AVANT
+    const lstSusarBNPV = await getSusarBNPV_v2(connectionSafetyEasy, 
+                                                lstSubLowLevel, 
+                                                datePivot, 
+                                                nbJourAvant, 
+                                                nbJourApres, 
+                                                assSub)
     
     const lstMasterId = await donne_lstMasterId (lstSusarBNPV)
     // console.log (lstMasterId , lstMasterId.length)
