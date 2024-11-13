@@ -1025,7 +1025,7 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
                   //   MeddraPt.reactionmeddrapt
                   // ]);
                   const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
-                    Medic['substancename'],
+                    Medic['substancename'].toUpperCase(),
                     MeddraPt.codereactionmeddrapt, 
                     MeddraPt.reactionmeddrapt
                   ]);
@@ -1172,7 +1172,7 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
                           "CURRENT_TIMESTAMP " +
                           ");"
                 const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
-                  highLevelSubName,
+                  highLevelSubName.toUpperCase(),
                   MeddraPt.codereactionmeddrapt, 
                   MeddraPt.reactionmeddrapt
                 ]);
