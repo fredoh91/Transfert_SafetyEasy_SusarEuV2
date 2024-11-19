@@ -80,8 +80,14 @@ const logger = pino({
     // level: 'info', 
   }, logStream);
 
+  const flushAndExit = (code) => {
+    logStream.flushSync(); 
+    process.exit(code);
+  }
 
+
+  
 // Exporter les instances de stream et logger
-export { logStream , logger };
+export { logStream , logger , flushAndExit };
 
 

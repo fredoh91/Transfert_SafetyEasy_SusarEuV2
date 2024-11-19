@@ -20,7 +20,8 @@
 
 import {
   logStream , 
-  logger
+  logger,
+  flushAndExit
 } from './logs_config.js'
 
 import path from 'path';
@@ -117,21 +118,47 @@ const trt_LL_SA = async (connectionSusarEu,connectionSafetyEasy,lstObjIntSubDmm,
 }
 
 const main = async () => {
-
-  // permet de capturer les erreurs non gérées et de les rediriger dans le fichier de log
+  // if (process.env.TYPE_EXECUTION == 'Prod') {
+  //   // permet de capturer les erreurs non gérées et de les rediriger dans le fichier de log
+  //   process.on('uncaughtException', (err) => {
+  //     logger.error(`Uncaught Exception: ${err.message}`);
+  //     logger.error(err.stack);
+  //     process.exit(1);
+  //   });
+  
+  //   // permet de capturer les promesses rejetées non gérées et de les rediriger dans le fichier de log
+  //   process.on('unhandledRejection', (reason, promise) => {
+  //     logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  //     logger.error(reason.stack);
+  //     process.exit(1);
+  //   });
+  // }
+if (process.env.TYPE_EXECUTION == 'Prod') {
+  // Capture uncaught exceptions and log them with additional details
   process.on('uncaughtException', (err) => {
+    const stackLines = err.stack.split('\n');
+    const location = stackLines[1].trim(); // Typically, the second line contains the location
     logger.error(`Uncaught Exception: ${err.message}`);
+    logger.error(`Location: ${location}`);
     logger.error(err.stack);
-    process.exit(1);
+    // Delay the process exit to ensure all logs are flushed
+    // setImmediate(() => process.exit(1));
   });
 
-  // permet de capturer les promesses rejetées non gérées et de les rediriger dans le fichier de log
+  // Capture unhandled promise rejections and log them with additional details
   process.on('unhandledRejection', (reason, promise) => {
+    const stackLines = reason.stack.split('\n');
+    const location = stackLines[1].trim(); // Typically, the second line contains the location
     logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    logger.error(`Location: ${location}`);
     logger.error(reason.stack);
-    process.exit(1);
+    // Delay the process exit to ensure all logs are flushed
+    // setImmediate(() => process.exit(1));
+    // process.nextTick(() => process.exit(1));
+    // Flush logs and exit
+    // flushAndExit(1);
   });
-
+}
 
   // traitement principal
   logger.info('Début import : Safety Easy => SUSAR_EU_v2');

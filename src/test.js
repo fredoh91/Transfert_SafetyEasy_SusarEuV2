@@ -311,6 +311,12 @@ const test = async () => {
   const connectionSusarEu = await poolSusarEu.getConnection();
   const connectionSafetyEasy = await poolSafetyEasy.getConnection();
 
+
+
+  const tabObjMed = await donne_medicament_by_master_id (connectionSusarEu,42161431)
+
+  console.log(tabObjMed)
+
   // await sauvegardeObjet(lstSusarBNPV,"lstSusarBNPV")
   // await sauvegardeObjet(MedicBNPV,"MedicBNPV")
   // await sauvegardeObjet(EIBNPV,"EIBNPV")
@@ -318,34 +324,34 @@ const test = async () => {
   // await sauvegardeObjet(DonneesEtudeBNPV,"DonneesEtudeBNPV")
   // await sauvegardeObjet(IndicationBNPV,"IndicationBNPV")
 
-  const lstSusarBNPV = await chargementObjet("lstSusarBNPV_test")
-  const MedicBNPV = await chargementObjet("MedicBNPV_test")
-  const EIBNPV = await chargementObjet("EIBNPV_test")
-  const MedHistBNPV = await chargementObjet("MedHistBNPV_test")
-  const DonneesEtudeBNPV = await chargementObjet("DonneesEtudeBNPV_test")
-  const IndicationBNPV = await chargementObjet("IndicationBNPV_test")
+//   const lstSusarBNPV = await chargementObjet("lstSusarBNPV_test")
+//   const MedicBNPV = await chargementObjet("MedicBNPV_test")
+//   const EIBNPV = await chargementObjet("EIBNPV_test")
+//   const MedHistBNPV = await chargementObjet("MedHistBNPV_test")
+//   const DonneesEtudeBNPV = await chargementObjet("DonneesEtudeBNPV_test")
+//   const IndicationBNPV = await chargementObjet("IndicationBNPV_test")
 
 
-// console.log (lstSusarBNPV)
+// // console.log (lstSusarBNPV)
 
-  let iTousSUSAR = 0
+//   let iTousSUSAR = 0
       
-  for (const susar of lstSusarBNPV) {
-    iTousSUSAR++
+//   for (const susar of lstSusarBNPV) {
+//     iTousSUSAR++
 
-    // console.log(susar)
+//     // console.log(susar)
 
-    const NivPrio = await donneNiveauPriorisation (connectionSusarEu,connectionSafetyEasy,susar,EIBNPV)
-    console.log(susar['master_id']," : ",NivPrio)
+//     const NivPrio = await donneNiveauPriorisation (connectionSusarEu,connectionSafetyEasy,susar,EIBNPV)
+//     console.log(susar['master_id']," : ",NivPrio)
 
 
-    // const resDonneGroupeAge = await donneGroupeAge (susar['patientagegroup'],susar['patientonsetage'],susar['patientonsetageunitlabel'])
-    // const resIsPaediatricGeriatric = await isPaediatricGeriatric (susar['patientagegroup'],susar['patientonsetage'],susar['patientonsetageunitlabel'])
-    // console.log(susar['master_id']," : ",resDonneGroupeAge," , isPediaGeria : ",resIsPaediatricGeriatric)
+//     // const resDonneGroupeAge = await donneGroupeAge (susar['patientagegroup'],susar['patientonsetage'],susar['patientonsetageunitlabel'])
+//     // const resIsPaediatricGeriatric = await isPaediatricGeriatric (susar['patientagegroup'],susar['patientonsetage'],susar['patientonsetageunitlabel'])
+//     // console.log(susar['master_id']," : ",resDonneGroupeAge," , isPediaGeria : ",resIsPaediatricGeriatric)
     
-  }
+//   }
 
-  console.log("Nombre de SUSAR à traiter : ",iTousSUSAR)
+//   console.log("Nombre de SUSAR à traiter : ",iTousSUSAR)
 
   await closePoolSafetyEasy(poolSafetyEasy)
 

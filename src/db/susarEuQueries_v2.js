@@ -1075,129 +1075,142 @@ async function insertDataSUSAR_EU_v2(connectionSusarEu,connectionSafetyEasy,lstO
 
         const tabObjMed = await donne_medicament_by_master_id (connectionSusarEu,susar['master_id'])
 
-        // console.log(tabObjMed)
-        // console.log(tabObjEI)
-
-        let tabObjMed_HL= ""    // tabObjMed_HL contiendra un tableau d'objet de la table "susar_eu_v2.medicaments" filtré sur ceux a mettre a jour ()
-        if (assSub) {
-          // association de substance
-          tabObjMed_HL = await donneObjMed_HL_AssSub_pour_MAJ (tabObjMed,lstObjIntSubDmm[0].ass_tab_LL)
-        } else {
-          // pas d'association de substance
-          // tabObjMed_HL = tabObjMed.filter(obj =>
-          //   // lstObjIntSubDmm.some(sub => sub.active_substance_low_level === obj.substancename)
-          //   lstObjIntSubDmm.some(sub => sub.active_substance_low_level.toLowerCase() === obj.substancename.toLowerCase())
-          // );
-          tabObjMed_HL = tabObjMed.filter(obj => {
-            if (obj && obj.substancename) {
-              const lowercaseSubstanceName = obj.substancename.toLowerCase();
-              return lstObjIntSubDmm.some(sub => 
-                sub.active_substance_low_level.toLowerCase() === lowercaseSubstanceName
-              );
-            }
-            return false;
-          });
-          
-          
-        }
-        // tabObjMed_HL est la liste des médicaments dans SUSAR_EU 
-        for (const ObjMed_HL of tabObjMed_HL) {
-
-          // Mise a jour la table medicament pour tous les objets tabObjMed_HL, en utilisant tabObjMed_HL.id
-          const idSUSAR_EU = ObjMed_HL.susar_id;
-          const SQL_medicament = `UPDATE medicaments
-          SET medicaments.active_substance_high_level = ?,
-          medicaments.intervenant_substance_dmm_id = ?,
-              medicaments.association_de_substances = ?,
-              medicaments.updated_at = CURRENT_TIMESTAMP
-              WHERE medicaments.id = ${ObjMed_HL.id};`
-
-              const res_upt_medicament = await connectionSusarEu.query(SQL_medicament, [highLevelSubName,id_int_sub,assSub])
-
-              if(res_upt_medicament[0].affectedRows > 0) {
-                
-                if (id_int_sub !== null) {
+        if (tabObjMed != null) {
+          // console.log(tabObjMed)
+          // console.log(tabObjEI)
+  
+          let tabObjMed_HL= ""    // tabObjMed_HL contiendra un tableau d'objet de la table "susar_eu_v2.medicaments" filtré sur ceux a mettre a jour ()
+          if (assSub) {
+            // association de substance
+            tabObjMed_HL = await donneObjMed_HL_AssSub_pour_MAJ (tabObjMed,lstObjIntSubDmm[0].ass_tab_LL)
+          } else {
+            // pas d'association de substance
+            // tabObjMed_HL = tabObjMed.filter(obj =>
+            //   // lstObjIntSubDmm.some(sub => sub.active_substance_low_level === obj.substancename)
+            //   lstObjIntSubDmm.some(sub => sub.active_substance_low_level.toLowerCase() === obj.substancename.toLowerCase())
+            // );
+  
+            // console.log(tabObjMed)
+  
+            tabObjMed_HL = tabObjMed.filter(obj => {
+              if (obj && obj.substancename) {
+                const lowercaseSubstanceName = obj.substancename.toLowerCase();
+                return lstObjIntSubDmm.some(sub => 
+                  sub.active_substance_low_level.toLowerCase() === lowercaseSubstanceName
+                );
+              }
+              return false;
+            });
+            
+            
+          }
+          // tabObjMed_HL est la liste des médicaments dans SUSAR_EU 
+          for (const ObjMed_HL of tabObjMed_HL) {
+  
+            // Mise a jour la table medicament pour tous les objets tabObjMed_HL, en utilisant tabObjMed_HL.id
+            const idSUSAR_EU = ObjMed_HL.susar_id;
+            const SQL_medicament = `UPDATE medicaments
+            SET medicaments.active_substance_high_level = ?,
+            medicaments.intervenant_substance_dmm_id = ?,
+                medicaments.association_de_substances = ?,
+                medicaments.updated_at = CURRENT_TIMESTAMP
+                WHERE medicaments.id = ${ObjMed_HL.id};`
+  
+                const res_upt_medicament = await connectionSusarEu.query(SQL_medicament, [highLevelSubName,id_int_sub,assSub])
+  
+                if(res_upt_medicament[0].affectedRows > 0) {
                   
-                  const isUniqueIntSubDmmSusar = await isUnique_intervenant_substance_dmm_susar_eu(connectionSusarEu,idSUSAR_EU,id_int_sub)
-                  if (isUniqueIntSubDmmSusar) {
-                    // INSERT dans la table de liaison susar_eu/intervenant_substance_dmm des ID des deux tables comme clefs étrangères
-                    const SQL_insert_intervenant_substance_dmm_susar_eu = "INSERT INTO intervenant_substance_dmm_susar_eu ( " +
-                    "susar_eu_id," +
-                    "intervenant_substance_dmm_id" +
-                    ") VALUES (" +
-                    "? ," +
-                    "? " +
-                    ");"
+                  if (id_int_sub !== null) {
                     
-                    const res2_2 = await connectionSusarEu.query(SQL_insert_intervenant_substance_dmm_susar_eu, [
-                      idSUSAR_EU,
-                      id_int_sub
-                    ])
+                    const isUniqueIntSubDmmSusar = await isUnique_intervenant_substance_dmm_susar_eu(connectionSusarEu,idSUSAR_EU,id_int_sub)
+                    if (isUniqueIntSubDmmSusar) {
+                      // INSERT dans la table de liaison susar_eu/intervenant_substance_dmm des ID des deux tables comme clefs étrangères
+                      const SQL_insert_intervenant_substance_dmm_susar_eu = "INSERT INTO intervenant_substance_dmm_susar_eu ( " +
+                      "susar_eu_id," +
+                      "intervenant_substance_dmm_id" +
+                      ") VALUES (" +
+                      "? ," +
+                      "? " +
+                      ");"
+                      
+                      const res2_2 = await connectionSusarEu.query(SQL_insert_intervenant_substance_dmm_susar_eu, [
+                        idSUSAR_EU,
+                        id_int_sub
+                      ])
+                }
               }
-            }
-            
-            // la MAJ a fonctionné => Il faut regarder que pour chaque objet de tabObjEI, on a bien un couple medicament/substance dans la table substance_pt :
-            // sinon on crée la ligne dans cette table "substance_pt" et on ajoute une entrée dans la table de liaison substance_pt_susar_eu
-            const tabMeddraPt = await donne_effets_indesirables_by_master_id (connectionSusarEu,susar['master_id'])
-            
-            // on boucle sur les EI_PT - tabMeddraPt (codereactionmeddrapt,reactionmeddrapt)
-            for (const MeddraPt of tabMeddraPt) {
-
-              // requete dans la table substance_pt pour voir si le couple substance/CodePT n'existe pas déja 
-              const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,highLevelSubName,MeddraPt.codereactionmeddrapt)
-              let id_substance_pt = null
-              if (id_substance_pt_2 != null) {
-                id_substance_pt = id_substance_pt_2
-                //      - si OUI : - on récupère substance_pt.id
-                //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
-                //                    - susar_eu_id = idSUSAR_EU
-                //                    - substance_pt_id = substance_pt.id
-              } else {
-                //      - si NON : - on crée une ligne dans substance_pt.id
-                //                 - on récupère substance_pt.id ainsi crée
-                //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
-                //                    - susar_eu_id = idSUSAR_EU
-                //                    - substance_pt_id = substance_pt.id
-                const SQL_insert_substance_pt = "INSERT INTO substance_pt ( " + 
-                          "active_substance_high_level," +
-                          "codereactionmeddrapt," +
-                          "reactionmeddrapt," +
-                          "created_at," +
-                          "updated_at " +
-                          ") VALUES (" +
-                          "? ," +
-                          "? ," +
-                          "? ," +
-                          "CURRENT_TIMESTAMP, " +
-                          "CURRENT_TIMESTAMP " +
-                          ");"
-                const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
-                  highLevelSubName.toUpperCase(),
-                  MeddraPt.codereactionmeddrapt, 
-                  MeddraPt.reactionmeddrapt
-                ]);
-                id_substance_pt = res_insert_substance_pt[0].insertId;
-              }
-
-              const Exist_substance_pt_susar_eu = await isAlreadyExist_substance_pt_susar_eu (connectionSusarEu,id_substance_pt,idSUSAR_EU)
-              // console.log (Exist_substance_pt_susar_eu)
-
-              if (Exist_substance_pt_susar_eu === null ) {
-                const SQL_insert_substance_pt_susar_eu = "INSERT INTO substance_pt_susar_eu ( " + 
-                          "substance_pt_id," +
-                          "susar_eu_id" +
-                          ") VALUES (" +
-                          "? ," +
-                          "? " +
-                          ");"
-                const res_insert_substance_pt_susar_eu = await connectionSusarEu.query(SQL_insert_substance_pt_susar_eu, [
-                  id_substance_pt,
-                  idSUSAR_EU
-                ]);
+              
+              // la MAJ a fonctionné => Il faut regarder que pour chaque objet de tabObjEI, on a bien un couple medicament/substance dans la table substance_pt :
+              // sinon on crée la ligne dans cette table "substance_pt" et on ajoute une entrée dans la table de liaison substance_pt_susar_eu
+              const tabMeddraPt = await donne_effets_indesirables_by_master_id (connectionSusarEu,susar['master_id'])
+              
+              // on boucle sur les EI_PT - tabMeddraPt (codereactionmeddrapt,reactionmeddrapt)
+              for (const MeddraPt of tabMeddraPt) {
+  
+                // requete dans la table substance_pt pour voir si le couple substance/CodePT n'existe pas déja 
+                const id_substance_pt_2 = await isAlreadyExist_substance_pt(connectionSusarEu,highLevelSubName,MeddraPt.codereactionmeddrapt)
+                let id_substance_pt = null
+                if (id_substance_pt_2 != null) {
+                  id_substance_pt = id_substance_pt_2
+                  //      - si OUI : - on récupère substance_pt.id
+                  //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+                  //                    - susar_eu_id = idSUSAR_EU
+                  //                    - substance_pt_id = substance_pt.id
+                } else {
+                  //      - si NON : - on crée une ligne dans substance_pt.id
+                  //                 - on récupère substance_pt.id ainsi crée
+                  //                 - creation d'une ligne dans la table substance_pt_susar_eu avec :
+                  //                    - susar_eu_id = idSUSAR_EU
+                  //                    - substance_pt_id = substance_pt.id
+                  const SQL_insert_substance_pt = "INSERT INTO substance_pt ( " + 
+                            "active_substance_high_level," +
+                            "codereactionmeddrapt," +
+                            "reactionmeddrapt," +
+                            "created_at," +
+                            "updated_at " +
+                            ") VALUES (" +
+                            "? ," +
+                            "? ," +
+                            "? ," +
+                            "CURRENT_TIMESTAMP, " +
+                            "CURRENT_TIMESTAMP " +
+                            ");"
+                  const res_insert_substance_pt = await connectionSusarEu.query(SQL_insert_substance_pt, [
+                    highLevelSubName.toUpperCase(),
+                    MeddraPt.codereactionmeddrapt, 
+                    MeddraPt.reactionmeddrapt
+                  ]);
+                  id_substance_pt = res_insert_substance_pt[0].insertId;
+                }
+  
+                const Exist_substance_pt_susar_eu = await isAlreadyExist_substance_pt_susar_eu (connectionSusarEu,id_substance_pt,idSUSAR_EU)
+                // console.log (Exist_substance_pt_susar_eu)
+  
+                if (Exist_substance_pt_susar_eu === null ) {
+                  const SQL_insert_substance_pt_susar_eu = "INSERT INTO substance_pt_susar_eu ( " + 
+                            "substance_pt_id," +
+                            "susar_eu_id" +
+                            ") VALUES (" +
+                            "? ," +
+                            "? " +
+                            ");"
+                  const res_insert_substance_pt_susar_eu = await connectionSusarEu.query(SQL_insert_substance_pt_susar_eu, [
+                    id_substance_pt,
+                    idSUSAR_EU
+                  ]);
+                }
               }
             }
           }
+        } else {
+          // on ne trouve pas de médicament pour ce susar précédement crée
+          logger.warn('On ne trouve pas de médicament pour ce susar précédement crée : ' +
+                      susar['master_id'] + " - " + 
+                      susar['specificcaseid'] + " - " + 
+                      susar['DLPVersion'])
+          
         }
+
 
         logger.warn('pas d\'import pour ce SUSAR, il existait déjà dans la SUSAR_EU : ' +
                     susar['master_id'] + " - " + 
@@ -1347,6 +1360,11 @@ async function donne_medicament_by_master_id (connectionSusarEu,master_id) {
   FROM medicaments
   WHERE medicaments.master_id = ?
    AND (medicaments.productcharacterization = 'Suspect' OR medicaments.productcharacterization = 'Interacting' );`
+
+  // const SQL_medicament_with_value = SQL_medicament.replace('?', master_id);
+  // // Log the query with the actual value
+  // console.log(SQL_medicament_with_value);
+
   const results = await connectionSusarEu.query(SQL_medicament, [master_id])
     if (results[0].length > 0) {
 
