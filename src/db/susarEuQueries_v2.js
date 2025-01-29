@@ -193,26 +193,51 @@ async function getSusarBNPV_v2(connectionSafetyEasy, lstSubLowLevel, datePivotSt
   if (assSub) {
     // sous requete pour les associations de substances associées
 
-    SQL_sous_Req = "SELECT DISTINCT mv.id as id_prod " +
-                                    "FROM master_versions mv " +
-                              "INNER JOIN bi_product pr ON mv.id = pr.master_id " +
-                               "LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock " +
-                                   "WHERE 1 = 1 " +
-                                     "AND specificcaseid LIKE 'EC%' AND su.substancename IN  (" + substanceNames + ") " +
-                                    "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
-                                    "AND mv.Deleted = 0 " +
-                               "GROUP BY mv.id " +
-                                 "HAVING COUNT(DISTINCT su.substancename) = " + lstSubLowLevel.length
+    // SQL_sous_Req = "SELECT DISTINCT mv.id as id_prod " +
+    //                                 "FROM master_versions mv " +
+    //                           "INNER JOIN bi_product pr ON mv.id = pr.master_id " +
+    //                            "LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock " +
+    //                                "WHERE 1 = 1 " +
+    //                                  "AND specificcaseid LIKE 'EC%' AND su.substancename IN  (" + substanceNames + ") " +
+    //                                 "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
+    //                                 "AND mv.Deleted = 0 " +
+    //                            "GROUP BY mv.id " +
+    //                              "HAVING COUNT(DISTINCT su.substancename) = " + lstSubLowLevel.length
+    SQL_sous_Req = `SELECT DISTINCT mv.id as id_prod 
+                              FROM master_versions mv 
+                              INNER JOIN bi_product pr ON mv.id = pr.master_id 
+                              LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock 
+                              WHERE 1 = 1 
+                                AND specificcaseid LIKE 'EC%' 
+                                AND (su.substancename IN (${substanceNames}) OR pr.productname IN (${substanceNames})) 
+                                AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') 
+                                AND mv.Deleted = 0 
+                              GROUP BY mv.id 
+                              HAVING COUNT(DISTINCT su.substancename) = ${lstSubLowLevel.length}`;
   } else 
   {
-    SQL_sous_Req = "SELECT DISTINCT mv.id as id_prod " +
-                                    "FROM master_versions mv " +
-                              "INNER JOIN bi_product pr ON mv.id = pr.master_id " +
-                               "LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock " +
-                                   "WHERE 1 = 1 " +
-                                     "AND specificcaseid LIKE 'EC%' AND su.substancename IN  (" + substanceNames + ") " +
-                                    "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
-                                    "AND mv.Deleted = 0"
+    // SQL_sous_Req = "SELECT DISTINCT mv.id as id_prod " +
+    //                                 "FROM master_versions mv " +
+    //                           "INNER JOIN bi_product pr ON mv.id = pr.master_id " +
+    //                            "LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock " +
+    //                                "WHERE 1 = 1 " +
+    //                                  "AND specificcaseid LIKE 'EC%' AND su.substancename IN  (" + substanceNames + ") " +
+    //                                 "AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') " +
+    //                                 "AND mv.Deleted = 0"
+
+      SQL_sous_Req = `SELECT DISTINCT mv.id as id_prod 
+                        FROM master_versions mv 
+                        INNER JOIN bi_product pr ON mv.id = pr.master_id 
+                        LEFT JOIN bi_product_substance su ON pr.master_id = su.master_id AND pr.NBBlock = su.NBBlock 
+                        WHERE 1 = 1 
+                          AND specificcaseid LIKE 'EC%' 
+                          AND (su.substancename IN (${substanceNames}) OR pr.productname IN (${substanceNames}))
+                          AND (pr.productcharacterization = 'Suspect' OR pr.productcharacterization = 'Interacting') 
+                          AND mv.Deleted = 0`;
+                    
+
+
+
   }
 
   const SQL = "SELECT DISTINCT " +
